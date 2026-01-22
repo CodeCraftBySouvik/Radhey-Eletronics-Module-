@@ -32,7 +32,7 @@
                                         <span>Total Stock Amount <strong>Rs. {{ number_format((float)$getStockPriceAll, 2, '.', '') }}</strong></span>
                                     </div>                                  
                                     <div class="col-auto">
-                                        <a href="{{ route('admin.report.stock-report-csv') }}?search={{$search}}" class="btn btn-outline-success select-md">Download Current Stock CSV</a> 
+                                        <a href="{{ route('admin.report.stock-report-csv') }}?search={{$search}}" class="btn btn-outline-success select-md">Download Current Stock</a> 
                                     </div> 
                                     <div class="col-3">
                                         <input type="search" name="search" id="search" class="form-control select-md" placeholder="Search here.." value="{{$search}}" autocomplete="off">                                
@@ -115,7 +115,8 @@
                     @endforelse                    
                 </tbody>
             </table>    
-            {{$products->links()}}
+            {{$products->links('pagination::bootstrap-4')}}
+
             </div>
         </div>        
     </div> 

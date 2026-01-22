@@ -38,6 +38,9 @@ use App\Models\Packingslip;
 use App\Models\ReturnProduct;
 use App\Models\PurchaseReturnProduct;
 use App\Models\PurchaseReturnBox;
+use App\Exports\StockReportExport;
+use App\Exports\SalesReportExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
@@ -391,7 +394,7 @@ class ReportController extends Controller
         ## ## ## ## ## ## ## ## ## ## ## ## ##
 
 
-        $fileName = "WMTOOLS-Store-Dues-".date('Ymd').".csv";
+        $fileName = "Vozen-Store-Dues-".date('Ymd').".csv";
         $headers = array(
             "Content-type"        => "text/csv",
             "Content-Disposition" => "attachment; filename=$fileName",
@@ -514,92 +517,142 @@ class ReportController extends Controller
 
 
         $pdf = Pdf::loadView('admin.report.sales-pdf', compact('orders','to_date','from_date','storeidc'));
-        $pdfname = "wmtools-sales-".date('Ymd',strtotime($to_date))."-".date('Ymd',strtotime($from_date));
+        $pdfname = "vozen-sales-".date('Ymd',strtotime($to_date))."-".date('Ymd',strtotime($from_date));
         return $pdf->download($pdfname.'.pdf');
 
     }
 
     public function sales_report_csv(Request $request)
-    {
-        $to_date = !empty($request->to_date)?$request->to_date:date('Y-m-d');
-        $from_date = !empty($request->from_date)?$request->from_date:date('Y-m-d', strtotime("-15 days"));
-        $storeidc = !empty($request->storeidc)?$request->storeidc:'';
+{
+    $to_date   = !empty($request->to_date) ? $request->to_date : date('Y-m-d');
+    $from_date = !empty($request->from_date) ? $request->from_date : date('Y-m-d', strtotime("-15 days"));
+    $storeidc  = !empty($request->storeidc) ? $request->storeidc : '';
 
-        // $orders = Order::select('id','store_id','amount','order_no','created_at')->with('stores:id,store_name,bussiness_name')->with('orderProducts:id,order_id,product_id,product_name,qty,pcs,piece_price,price')->with('packingslip:id,order_id,is_disbursed')->where('status', '!=', 3)->whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date]);
+    $orders = Invoice::whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date]);
 
-        // if(!empty($storeidc)){
-        //     // dd($store_ids);
-        //     $store_ids = explode(",",$storeidc);
-        //     $orders = $orders->whereIn('store_id',$store_ids);
-        // }
-        
-        // $orders = $orders->orderBy('id','desc')->get();
-
-        $orders = Invoice::whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date]);
-        $count_order = Invoice::whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date]);
-        $total_amount =  Invoice::whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date]);
-
-        $storeidc = '';
-        if(!empty($store_ids)){
-            $storeidc = implode(",",$store_ids);
-            $orders = $orders->whereIn('store_id',$store_ids);
-            $count_order = $count_order->whereIn('store_id',$store_ids);
-            $total_amount = $total_amount->whereIn('store_id',$store_ids);
-        }
-        $orders = $orders->orderBy('id','desc')->get();
-        
-        $myArr = array();
-        foreach($orders as $item){
-            
-            $orderProducts = $item->products;
-            foreach($orderProducts as $pro){
-                $ordProdArr[] = array(
-                    'product_name' => $pro->product_name,
-                    'piece_price' => $pro->single_product_price,
-                    'qty' => $pro->quantity
-                );
-            }
-            $myArr[] = array(
-                'date' => date('d/m/Y', strtotime($item->created_at)),
-                'order_no' => $item->order->order_no,
-                'invoice_no' => $item->invoice_no,
-                'store' => !empty($item->store->bussiness_name)?$item->store->bussiness_name:$item->stores->store_name,
-                'amount' => 'XOF. '.number_format((float)$item->net_price, 2, '.', ''),
-                'products' => $ordProdArr
-            ); 
-        }
-
-        // dd($myArr);
-        
-
-
-        $fileName = "wmtools-sales-".date('Ymd',strtotime($to_date))."-".date('Ymd',strtotime($from_date)).".csv";
-        $headers = array(
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        );
-
-        $columns = array('Date','Order No / Invoice No','Store','Amount');
-
-        $callback = function() use($myArr, $columns) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns);
-            
-            foreach ($myArr as $item) {    
-                $row['Date']  = $item['date'];
-                $row['Order No / Invoice No'] = $item['order_no'].' / '.$item['invoice_no'];
-                $row['Store'] = $item['store'];                
-                $row['Amount'] = $item['amount'];
-                                
-                fputcsv($file, array($row['Date'], $row['Order No / Invoice No'], $row['Store'], $row['Amount']));                
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
+    if (!empty($storeidc)) {
+        $store_ids = explode(",", $storeidc);
+        $orders = $orders->whereIn('store_id', $store_ids);
     }
+
+    $orders = $orders->orderBy('id', 'desc')->get();
+
+    $myArr = [];
+
+    foreach ($orders as $item) {
+
+        $ordProdArr = [];
+
+        foreach ($item->products as $pro) {
+            $ordProdArr[] = [
+                'product_name' => $pro->product_name,
+                'piece_price'  => $pro->single_product_price,
+                'qty'          => $pro->quantity,
+            ];
+        }
+
+        $myArr[] = [
+            'date'        => date('d/m/Y', strtotime($item->created_at)),
+            'order_no'    => $item->order->order_no,
+            'invoice_no'  => $item->invoice_no,
+            'store'       => !empty($item->store->bussiness_name)
+                                ? $item->store->bussiness_name
+                                : $item->stores->store_name,
+            'amount'      => 'XOF. ' . number_format((float)$item->net_price, 2, '.', ''),
+            'products'    => $ordProdArr,
+        ];
+    }
+
+    $fileName = "vozen-sales-"
+        . date('Ymd', strtotime($to_date))
+        . "-"
+        . date('Ymd', strtotime($from_date))
+        . ".xlsx";
+
+    return Excel::download(new SalesReportExport($myArr), $fileName);
+}
+
+    // public function sales_report_csv(Request $request)
+    // {
+    //     $to_date = !empty($request->to_date)?$request->to_date:date('Y-m-d');
+    //     $from_date = !empty($request->from_date)?$request->from_date:date('Y-m-d', strtotime("-15 days"));
+    //     $storeidc = !empty($request->storeidc)?$request->storeidc:'';
+
+    //     // $orders = Order::select('id','store_id','amount','order_no','created_at')->with('stores:id,store_name,bussiness_name')->with('orderProducts:id,order_id,product_id,product_name,qty,pcs,piece_price,price')->with('packingslip:id,order_id,is_disbursed')->where('status', '!=', 3)->whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date]);
+
+    //     // if(!empty($storeidc)){
+    //     //     // dd($store_ids);
+    //     //     $store_ids = explode(",",$storeidc);
+    //     //     $orders = $orders->whereIn('store_id',$store_ids);
+    //     // }
+        
+    //     // $orders = $orders->orderBy('id','desc')->get();
+
+    //     $orders = Invoice::whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date]);
+    //     $count_order = Invoice::whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date]);
+    //     $total_amount =  Invoice::whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date]);
+
+    //     $storeidc = '';
+    //     if(!empty($store_ids)){
+    //         $storeidc = implode(",",$store_ids);
+    //         $orders = $orders->whereIn('store_id',$store_ids);
+    //         $count_order = $count_order->whereIn('store_id',$store_ids);
+    //         $total_amount = $total_amount->whereIn('store_id',$store_ids);
+    //     }
+    //     $orders = $orders->orderBy('id','desc')->get();
+        
+    //     $myArr = array();
+    //     foreach($orders as $item){
+            
+    //         $orderProducts = $item->products;
+    //         foreach($orderProducts as $pro){
+    //             $ordProdArr[] = array(
+    //                 'product_name' => $pro->product_name,
+    //                 'piece_price' => $pro->single_product_price,
+    //                 'qty' => $pro->quantity
+    //             );
+    //         }
+    //         $myArr[] = array(
+    //             'date' => date('d/m/Y', strtotime($item->created_at)),
+    //             'order_no' => $item->order->order_no,
+    //             'invoice_no' => $item->invoice_no,
+    //             'store' => !empty($item->store->bussiness_name)?$item->store->bussiness_name:$item->stores->store_name,
+    //             'amount' => 'XOF. '.number_format((float)$item->net_price, 2, '.', ''),
+    //             'products' => $ordProdArr
+    //         ); 
+    //     }
+
+    //     // dd($myArr);
+        
+
+
+    //     $fileName = "wmtools-sales-".date('Ymd',strtotime($to_date))."-".date('Ymd',strtotime($from_date)).".csv";
+    //     $headers = array(
+    //         "Content-type"        => "text/csv",
+    //         "Content-Disposition" => "attachment; filename=$fileName",
+    //         "Pragma"              => "no-cache",
+    //         "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+    //         "Expires"             => "0"
+    //     );
+
+    //     $columns = array('Date','Order No / Invoice No','Store','Amount');
+
+    //     $callback = function() use($myArr, $columns) {
+    //         $file = fopen('php://output', 'w');
+    //         fputcsv($file, $columns);
+            
+    //         foreach ($myArr as $item) {    
+    //             $row['Date']  = $item['date'];
+    //             $row['Order No / Invoice No'] = $item['order_no'].' / '.$item['invoice_no'];
+    //             $row['Store'] = $item['store'];                
+    //             $row['Amount'] = $item['amount'];
+                                
+    //             fputcsv($file, array($row['Date'], $row['Order No / Invoice No'], $row['Store'], $row['Amount']));                
+    //         }
+    //         fclose($file);
+    //     };
+    //     return response()->stream($callback, 200, $headers);
+    // }
 
    public function sales_analysis(Request $request)
     {
@@ -755,7 +808,7 @@ class ReportController extends Controller
         }
 
         // dd($myArr);
-        $fileName = "wmtools-sales-analysis-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".csv";
+        $fileName = "vozen-sales-analysis-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".csv";
         $headers = array(
             "Content-type"        => "text/csv",
             "Content-Disposition" => "attachment; filename=$fileName",
@@ -875,7 +928,7 @@ class ReportController extends Controller
 
         
         $userName = getSingleAttributeTable('users',$user_id,'name');
-        $fileName = "wmtools-comm-collects-".$userName."-".$month."-".$year.".csv";
+        $fileName = "vozen-comm-collects-".$userName."-".$month."-".$year.".csv";
         // dd($fileName);
         $headers = array(
             "Content-type"        => "text/csv",
@@ -1016,59 +1069,92 @@ class ReportController extends Controller
         return view('admin.report.stock', compact('products','paginate','count_products','search'));
     }
 
+    // public function stock_report_csv(Request $request)
+    // {
+    //     $search = !empty($request->search)?$request->search:'';
+    //     $products = Product::select('id','name','cost_price','pcs')->with('count_stock');
+        
+    //     if(!empty($search)){
+    //         $products = $products->where('name','LIKE','%'.$search.'%');
+    //         $count_products = $products->where('name','LIKE','%'.$search.'%');
+    //     }
+        
+    //     $products = $products->orderBy('name')->get();
+
+    //     $myArr = array();
+    //     foreach($products as $product){
+    //         $getStockPriceQty = getStockPriceQty($product->id);
+    //         $sumPiecePrice = $getStockPriceQty['sumPiecePrice'];
+    //         $myArr[] = array(
+    //             'product' => $product->name,
+    //             'count_stock' => count($product->count_stock),
+    //             'count_pcs' =>  ($product->pcs * count($product->count_stock)),
+    //             // 'cp' => $product->cost_price
+    //             'stock_price' => $sumPiecePrice
+    //         ); 
+    //     }
+
+    //     // dd($myArr);
+    //     $fileName = "wmtools-stock-".date('Ymd').".csv";
+    //     $headers = array(
+    //         "Content-type"        => "text/csv",
+    //         "Content-Disposition" => "attachment; filename=$fileName",
+    //         "Pragma"              => "no-cache",
+    //         "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+    //         "Expires"             => "0"
+    //     );
+
+    //     $columns = array('Product','Total No Of Cartons','Total No Of Pieces','Total Stock Amount');
+
+    //     $callback = function() use($myArr, $columns) {
+    //         $file = fopen('php://output', 'w');
+    //         fputcsv($file, $columns);
+            
+    //         foreach ($myArr as $item) {    
+    //             $row['Product']  = $item['product'];
+    //             $row['Total No Of Cartons'] = $item['count_stock'];
+    //             $row['Total No Of Pieces'] = $item['count_pcs'];
+    //             $row['Total Stock Amount'] = 'XOF. '.number_format((float)$item['stock_price'], 2, '.', '').'';
+                
+    //             fputcsv($file, array($row['Product'], $row['Total No Of Cartons'], $row['Total No Of Pieces'], $row['Total Stock Amount']));                
+    //         }
+    //         fclose($file);
+    //     };
+    //     return response()->stream($callback, 200, $headers);
+
+    // }
+
     public function stock_report_csv(Request $request)
     {
-        $search = !empty($request->search)?$request->search:'';
-        $products = Product::select('id','name','cost_price','pcs')->with('count_stock');
-        
-        if(!empty($search)){
-            $products = $products->where('name','LIKE','%'.$search.'%');
-            $count_products = $products->where('name','LIKE','%'.$search.'%');
+        $search = !empty($request->search) ? $request->search : '';
+
+        $products = Product::select('id','name','cost_price','pcs')
+            ->with('count_stock');
+
+        if (!empty($search)) {
+            $products = $products->where('name', 'LIKE', '%' . $search . '%');
         }
-        
+
         $products = $products->orderBy('name')->get();
 
-        $myArr = array();
-        foreach($products as $product){
+        $myArr = [];
+
+        foreach ($products as $product) {
+
             $getStockPriceQty = getStockPriceQty($product->id);
-            $sumPiecePrice = $getStockPriceQty['sumPiecePrice'];
-            $myArr[] = array(
-                'product' => $product->name,
+            $sumPiecePrice   = $getStockPriceQty['sumPiecePrice'];
+
+            $myArr[] = [
+                'product'     => $product->name,
                 'count_stock' => count($product->count_stock),
-                'count_pcs' =>  ($product->pcs * count($product->count_stock)),
-                // 'cp' => $product->cost_price
-                'stock_price' => $sumPiecePrice
-            ); 
+                'count_pcs'   => ($product->pcs * count($product->count_stock)),
+                'stock_price' => $sumPiecePrice,
+            ];
         }
 
-        // dd($myArr);
-        $fileName = "wmtools-stock-".date('Ymd').".csv";
-        $headers = array(
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        );
+        $fileName = "vozen-stock-" . date('Ymd') . ".xlsx";
 
-        $columns = array('Product','Total No Of Cartons','Total No Of Pieces','Total Stock Amount');
-
-        $callback = function() use($myArr, $columns) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns);
-            
-            foreach ($myArr as $item) {    
-                $row['Product']  = $item['product'];
-                $row['Total No Of Cartons'] = $item['count_stock'];
-                $row['Total No Of Pieces'] = $item['count_pcs'];
-                $row['Total Stock Amount'] = 'XOF. '.number_format((float)$item['stock_price'], 2, '.', '').'';
-                
-                fputcsv($file, array($row['Product'], $row['Total No Of Cartons'], $row['Total No Of Pieces'], $row['Total Stock Amount']));                
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
-
+        return Excel::download(new StockReportExport($myArr), $fileName);
     }
 
     public function stock_ledger(Request $request)
@@ -1170,7 +1256,7 @@ class ReportController extends Controller
         // array_unshift($myArr,$obArr);
 
         // dd($myArr);
-        $fileName = "wmtools-stockledger-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".csv";
+        $fileName = "vozen-stockledger-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".csv";
         // dd($fileName);
         $headers = array(
             "Content-type"        => "text/csv",
@@ -1326,7 +1412,7 @@ class ReportController extends Controller
 
         
         
-        $fileName = "wmtools-paymentcollection-".date('Ymd',strtotime($to_date))."-".date('Ymd',strtotime($from_date)).".csv";
+        $fileName = "vozen-paymentcollection-".date('Ymd',strtotime($to_date))."-".date('Ymd',strtotime($from_date)).".csv";
         $headers = array(
             "Content-type"        => "text/csv",
             "Content-Disposition" => "attachment; filename=$fileName",
@@ -1424,7 +1510,7 @@ class ReportController extends Controller
         }
         // dd($myArr);
 
-        $fileName = "WMTOOLS-System-Stock-".date('Y-m-d',strtotime($entry_date)).".csv";
+        $fileName = "Vozen-System-Stock-".date('Y-m-d',strtotime($entry_date)).".csv";
         $headers = array(
             "Content-type"        => "text/csv",
             "Content-Disposition" => "attachment; filename=$fileName",
@@ -2264,7 +2350,7 @@ class ReportController extends Controller
 
         
         // dd($myArr);
-        $fileName = "wmtools-daily-stocklogs-".date('Ymd',strtotime($entry_date)).".csv";
+        $fileName = "vozen-daily-stocklogs-".date('Ymd',strtotime($entry_date)).".csv";
         // dd($fileName);
         $headers = array(
             "Content-type"        => "text/csv",

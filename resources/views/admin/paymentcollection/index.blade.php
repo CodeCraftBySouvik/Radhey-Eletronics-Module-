@@ -186,7 +186,9 @@ $staff_id = (isset($_GET['staff_id']) && $_GET['staff_id']!='')?$_GET['staff_id'
                 </tbody>
             </table>
         </div>
-            {{$data->links()}}
+            {{-- {{$data->links()}} --}}
+            {{$data->links('pagination::bootstrap-4')}}
+
         </div>
     </div>
 </section>

@@ -91,7 +91,8 @@ use App\Models\StoreBadDebt;
 
 
 
-
+use App\Exports\ExpensesExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 
 
@@ -3025,137 +3026,145 @@ class AccountingController extends Controller
 
     }
 
-    public function csv_export_expenses(Request $request){
+    public function csv_export_expenses(Request $request)
+    {
+        return Excel::download(
+            new ExpensesExport($request->search, $request->entry_date),
+            'Depot-expense-' . date('d-m-Y') . '.xlsx'
+        );
+    }
 
-        $search = !empty($request->search)?$request->search:'';
+    // public function csv_export_expenses(Request $request){
 
-
-
-        $entry_date = !empty($request->entry_date)?$request->entry_date:'';
-
-
-
-        $data = Payment::where('voucher_no', 'LIKE', 'EXPENSE%');
-
-        if(!empty($search)){
+    //     $search = !empty($request->search)?$request->search:'';
 
 
 
-            $data = $data->where('voucher_no', 'LIKE','%'.$search.'%')->orWhere('narration','LIKE','%'.$search.'%')->orWhereHas('creator', function($cr) use($search){
+    //     $entry_date = !empty($request->entry_date)?$request->entry_date:'';
 
 
 
-                $cr->where('name', 'LIKE','%'.$search.'%');
+    //     $data = Payment::where('voucher_no', 'LIKE', 'EXPENSE%');
+
+    //     if(!empty($search)){
 
 
 
-            });
-
-        }
+    //         $data = $data->where('voucher_no', 'LIKE','%'.$search.'%')->orWhere('narration','LIKE','%'.$search.'%')->orWhereHas('creator', function($cr) use($search){
 
 
 
-        if(!empty($entry_date)){
+    //             $cr->where('name', 'LIKE','%'.$search.'%');
 
 
 
-            $data = $data->where('payment_date',$entry_date);
+    //         });
+
+    //     }
+
+
+
+    //     if(!empty($entry_date)){
+
+
+
+    //         $data = $data->where('payment_date',$entry_date);
 
 
 
 
 
-        }
+    //     }
 
 
 
-        $data = $data->orderBy('payment_date','desc')->get();
+    //     $data = $data->orderBy('payment_date','desc')->get();
 
-        if(count($data)>0){
+    //     if(count($data)>0){
 
-                 $delimiter = ",";
+    //              $delimiter = ",";
 
-                 $fileName = "Depot-expense-".date('d-m-Y').".csv";
+    //              $fileName = "Depot-expense-".date('d-m-Y').".csv";
 
-                 // Create a file pointer
+    //              // Create a file pointer
 
-                 $f = fopen('php://memory', 'w');
+    //              $f = fopen('php://memory', 'w');
 
                  
 
-                 // Set Column Headers
+    //              // Set Column Headers
 
-                 $header = array("Staff","Payment For","Voucher No","Payment Date", "Amount", "Payment Type", "Payment Mode", "Bank Name", "Cheque URT No", "Narration", "Created By", "Created at");
+    //              $header = array("Staff","Payment For","Voucher No","Payment Date", "Amount", "Payment Type", "Payment Mode", "Bank Name", "Cheque URT No", "Narration", "Created By", "Created at");
 
-            fputcsv($f,$header,$delimiter);
+    //         fputcsv($f,$header,$delimiter);
 
             
 
-            $count =1;
+    //         $count =1;
 
-              foreach($data as $key => $row){
+    //           foreach($data as $key => $row){
 
-                $staff_data = DB::table('users')->where('id', $row->staff_id)->first();
+    //             $staff_data = DB::table('users')->where('id', $row->staff_id)->first();
 
-                $created_by = DB::table('users')->where('id', $row->created_by)->first();
+    //             $created_by = DB::table('users')->where('id', $row->created_by)->first();
 
-                $exportData = array(
+    //             $exportData = array(
 
-                    $row->staff_id ? $staff_data->name : '',
+    //                 $row->staff_id ? $staff_data->name : '',
 
-                    $row->payment_for ? $row->payment_for : '',    
+    //                 $row->payment_for ? $row->payment_for : '',    
 
-                    $row->voucher_no ? $row->voucher_no : '',      
+    //                 $row->voucher_no ? $row->voucher_no : '',      
 
-                    $row->payment_date ? $row->payment_date : '',      
+    //                 $row->payment_date ? $row->payment_date : '',      
 
-                    $row->amount ? $row->amount : '',  
+    //                 $row->amount ? $row->amount : '',  
 
-                    $row->bank_cash ? $row->bank_cash : '',
+    //                 $row->bank_cash ? $row->bank_cash : '',
 
-                    $row->payment_mode ? $row->payment_mode : '', 
+    //                 $row->payment_mode ? $row->payment_mode : '', 
 
-                    $row->bank_name ? $row->bank_name : '',  
+    //                 $row->bank_name ? $row->bank_name : '',  
 
-                    $row->chq_utr_no ? $row->chq_utr_no : '',      
+    //                 $row->chq_utr_no ? $row->chq_utr_no : '',      
 
-                    $row->narration ? $row->narration : '',             
+    //                 $row->narration ? $row->narration : '',             
 
-                    $row->created_by ? $created_by->name : '',             
+    //                 $row->created_by ? $created_by->name : '',             
 
-                    $row->created_at ? $row->created_at : '',             
+    //                 $row->created_at ? $row->created_at : '',             
 
-                );
+    //             );
 
-                    fputcsv($f,$exportData,$delimiter);
+    //                 fputcsv($f,$exportData,$delimiter);
 
-                    $count++;
+    //                 $count++;
 
-                    }
+    //                 }
 
-                     fseek($f,0);
+    //                  fseek($f,0);
 
-                    // Set headers to download file rather than displayed
+    //                 // Set headers to download file rather than displayed
 
-                    header('Content-Type: text/csv');
+    //                 header('Content-Type: text/csv');
 
-                    header('Content-Disposition: attachment; filename="' . $fileName . '";');
+    //                 header('Content-Disposition: attachment; filename="' . $fileName . '";');
 
                     
 
-                    //output all remaining data on a file pointer
+    //                 //output all remaining data on a file pointer
 
-                    fpassthru($f);
+    //                 fpassthru($f);
 
-        }else {
+    //     }else {
 
-             Session::flash('message', 'Data not found'); 
+    //          Session::flash('message', 'Data not found'); 
 
-            return redirect()->back();
+    //         return redirect()->back();
 
-        }
+    //     }
 
-    }
+    // }
 
 
 

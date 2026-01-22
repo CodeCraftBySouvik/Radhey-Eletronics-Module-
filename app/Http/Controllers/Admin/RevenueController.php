@@ -852,7 +852,7 @@ class RevenueController extends Controller
 
 
 
-        $fileName = "wmtools-pnl-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".csv";
+        $fileName = "vozen-pnl-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".csv";
 
 
 

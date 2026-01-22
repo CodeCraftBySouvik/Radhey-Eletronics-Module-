@@ -167,7 +167,7 @@ class StockAuditController extends Controller
         // dd($myArr);
 
 
-        $fileName = "WMTOOLS-Godown-Stock-".date('Y-m-d',strtotime($entry_date)).".csv";
+        $fileName = "Vozen-Godown-Stock-".date('Y-m-d',strtotime($entry_date)).".csv";
         $headers = array(
             "Content-type"        => "text/csv",
             "Content-Disposition" => "attachment; filename=$fileName",

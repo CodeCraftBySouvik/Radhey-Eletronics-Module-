@@ -34,7 +34,7 @@
             </div>  
             <div class="col-auto ms-auto">
                 <a href="{{ route('admin.report.sales-report-pdf') }}?from_date={{$from_date}}&to_date={{$to_date}}&storeidc={{$storeidc}}" class="btn btn-success select-md">Download PDF</a>
-                <a href="{{ route('admin.report.sales-report-csv') }}?from_date={{$from_date}}&to_date={{$to_date}}&storeidc={{$storeidc}}" class="btn btn-success select-md">Export CSV</a>
+                <a href="{{ route('admin.report.sales-report-csv') }}?from_date={{$from_date}}&to_date={{$to_date}}&storeidc={{$storeidc}}" class="btn btn-success select-md">Export</a>
             </div>          
         </div>
         
@@ -197,7 +197,7 @@
                     @endforelse                    
                 </tbody>
             </table>    
-            {{$orders->links()}}
+            {{$orders->links('pagination::bootstrap-4')}}
             </div>
         </div>        
     </div>

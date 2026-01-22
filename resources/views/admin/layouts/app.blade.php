@@ -228,7 +228,7 @@
                             
 							 <li class="{{ ( request()->is('admin/accounting*') ) ? 'active' : '' }}"><a href="{{ route('admin.accounting.cash_book_module') }}">Cashbook Module</a></li>  
 							
-							 <li class="{{ ( request()->is('admin/accounting*') ) ? 'active' : '' }}"><a href="{{ route('admin.accounting.day_cash_entry') }}">Day Cash Entry</a></li>
+							 {{-- <li class="{{ ( request()->is('admin/accounting*') ) ? 'active' : '' }}"><a href="{{ route('admin.accounting.day_cash_entry') }}">Day Cash Entry</a></li> --}}
                             
                             <li class="{{ ( request()->is('admin/revenue/withdrawls') ) ? 'active' : '' }}"><a href="{{ route('admin.revenue.withdrawls') }}"> Withdrawl Funds(Partner)</a></li> 
                             

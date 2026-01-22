@@ -67,7 +67,7 @@
                                 </div>  
                                 <div class="col-auto">
 
-                                   <a href="{{ route('admin.accounting.csv_export_expenses',['entry_date'=>$entry_date, 'search'=>$search]) }}" class="btn btn-success ">Export CSV</a>                           
+                                   <a href="{{ route('admin.accounting.csv_export_expenses',['entry_date'=>$entry_date, 'search'=>$search]) }}" class="btn btn-success ">Export</a>                           
 
                                 </div>  
 
@@ -334,7 +334,7 @@
 
         </div>
 
-            {{$data->links()}}
+            {{$data->links('pagination::bootstrap-4')}}
 
         </div>
 
