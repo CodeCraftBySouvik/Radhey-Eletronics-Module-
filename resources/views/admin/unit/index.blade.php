@@ -92,7 +92,8 @@
                     </tbody>
                 </table> 
 
-                {{$data->links()}}
+                    {{$data->links('pagination::bootstrap-4')}}
+
             </form> 
         </div>
         <div class="col-sm-4">

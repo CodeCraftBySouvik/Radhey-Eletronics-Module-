@@ -139,7 +139,8 @@
                     </table> 
                 </div>
             </form> 
-            {{ $data->links() }} 
+                {{$data->links('pagination::bootstrap-4')}}
+
         </div>
         <div class="col-sm-4 order-1 order-xl-2">
             <div class="card">               

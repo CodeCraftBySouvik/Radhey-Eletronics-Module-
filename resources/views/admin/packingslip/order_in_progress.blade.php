@@ -242,7 +242,8 @@
                 </table>    
             </div>
 
-            {{$data->links()}}           
+             {{$data->links('pagination::bootstrap-4')}}
+
         </div>
     </div>
     
