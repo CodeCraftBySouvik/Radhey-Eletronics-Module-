@@ -41,6 +41,12 @@ use App\Models\PurchaseReturnBox;
 use App\Exports\StockReportExport;
 use App\Exports\SalesReportExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\CpSpReportExport;
+use App\Exports\StoreDuePaymentsExport;
+use App\Exports\UserLedgerExport;
+use App\Exports\StockLedgerExport;
+use App\Exports\SalesAnalysisExport;
+use App\Exports\PaymentCollectionReportExport;
 
 class ReportController extends Controller
 {
@@ -74,78 +80,122 @@ class ReportController extends Controller
 
     public function cp_sp_csv(Request $request)
     {
-        # CP / SP CSV Download...
 
-        $search = !empty($request->search)?$request->search:'';
-        $from_date = !empty($request->from_date)?$request->from_date:date('Y-m-d', strtotime("-3 months"));
-        $to_date = !empty($request->to_date)?$request->to_date:date('Y-m-d');
+        $search = !empty($request->search) ? $request->search : '';
+        $from_date = !empty($request->from_date) ? $request->from_date : date('Y-m-d', strtotime("-3 months"));
+        $to_date = !empty($request->to_date) ? $request->to_date : date('Y-m-d');
 
         $data = Product::select('id','name','cost_price','pcs','sub_cat_id');
 
-        if(!empty($search)){
-            $data = $data->where('name','LIKE','%'.$search.'%')->orWhereHas('subCategory', function($subCategory) use($search){
-                $subCategory->where('name', 'LIKE', '%'.$search.'%');
+        if (!empty($search)) {
+            $data->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', '%' . $search . '%')
+                ->orWhereHas('subCategory', function ($subCategory) use ($search) {
+                    $subCategory->where('name', 'LIKE', '%' . $search . '%');
+                });
             });
         }
-        $data = $data->where('cost_price','!=',0)->orderBy('sub_cat_id','asc')->get();
-        // dd($data);
 
-        $myArr = array();
-        foreach($data as $item){
-            $getProductMinMaxSellPrice = getProductMinMaxSellPrice($from_date,$to_date,$item->id);
-            $minPrice = $getProductMinMaxSellPrice['minPrice'];
-            $maxPrice = $getProductMinMaxSellPrice['maxPrice'];
-            $checkStockPO = checkStockPO($item->id,0);
-            $stock = $checkStockPO['stock'];
-            
-            $myArr[] = array(
-                'product' => $item->name,
-                'subcat_name' => $item->subCategory->name,
-                'pcs' => $item->pcs,
-                'costPrice' => 'XOF. '.number_format((float)$item->cost_price, 2, '.', ''),
-                'minPrice' => 'XOF. '.number_format((float)$minPrice, 2, '.', ''),
-                'maxPrice' => 'XOF. '.number_format((float)$maxPrice, 2, '.', ''),
-                'stock' => $stock
-            ); 
+        $data = $data->where('cost_price','!=',0)
+                    ->orderBy('sub_cat_id','asc')
+                    ->get();
+
+        $rows = [];
+
+        foreach ($data as $item) {
+            $price = getProductMinMaxSellPrice($from_date, $to_date, $item->id);
+            $stockData = checkStockPO($item->id, 0);
+
+            $rows[] = [
+                $item->name,
+                $item->subCategory->name,
+                'XOF. ' . number_format((float)$item->cost_price, 2),
+                'XOF. ' . number_format((float)$price['minPrice'], 2),
+                'XOF. ' . number_format((float)$price['maxPrice'], 2),
+                $item->pcs,
+                $stockData['stock'],
+            ];
         }
 
-        // dd($myArr);
-        $fileName = "CP-SP-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($from_date)).".csv";
-        $headers = array(
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        );
-       
-        $columns = array('Product','Subcategory','Cost Price','Min Sell Price','Max Sell Price','Pcs Per Ctn', 'Stock');
+        $fileName = "CP-SP-" . date('Ymd', strtotime($from_date)) . "-" . date('Ymd', strtotime($to_date)) . ".xlsx";
 
-
-        $callback = function() use($myArr, $columns) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns);            
-
-            foreach ($myArr as $item) {          
-                $row['Product']  = $item['product'];
-                $row['Subcategory'] = $item['subcat_name'];
-                $row['Cost Price'] = $item['costPrice'];
-                $row['Min Sell Price'] = $item['minPrice'];
-                $row['Max Sell Price'] = $item['maxPrice'];
-                $row['Pcs Per Ctn'] = $item['pcs'];
-                $row['Stock'] = $item['stock'];
-                                
-                fputcsv($file, array($row['Product'], $row['Subcategory'],$row['Cost Price'], $row['Min Sell Price'], $row['Max Sell Price'], $row['Pcs Per Ctn'], $row['Stock'] ));                
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
-
-
-
-
-
+        return Excel::download(new CpSpReportExport($rows), $fileName);
     }
+
+    // public function cp_sp_csv(Request $request)
+    // {
+    //     # CP / SP CSV Download...
+
+    //     $search = !empty($request->search)?$request->search:'';
+    //     $from_date = !empty($request->from_date)?$request->from_date:date('Y-m-d', strtotime("-3 months"));
+    //     $to_date = !empty($request->to_date)?$request->to_date:date('Y-m-d');
+
+    //     $data = Product::select('id','name','cost_price','pcs','sub_cat_id');
+
+    //     if(!empty($search)){
+    //         $data = $data->where('name','LIKE','%'.$search.'%')->orWhereHas('subCategory', function($subCategory) use($search){
+    //             $subCategory->where('name', 'LIKE', '%'.$search.'%');
+    //         });
+    //     }
+    //     $data = $data->where('cost_price','!=',0)->orderBy('sub_cat_id','asc')->get();
+    //     // dd($data);
+
+    //     $myArr = array();
+    //     foreach($data as $item){
+    //         $getProductMinMaxSellPrice = getProductMinMaxSellPrice($from_date,$to_date,$item->id);
+    //         $minPrice = $getProductMinMaxSellPrice['minPrice'];
+    //         $maxPrice = $getProductMinMaxSellPrice['maxPrice'];
+    //         $checkStockPO = checkStockPO($item->id,0);
+    //         $stock = $checkStockPO['stock'];
+            
+    //         $myArr[] = array(
+    //             'product' => $item->name,
+    //             'subcat_name' => $item->subCategory->name,
+    //             'pcs' => $item->pcs,
+    //             'costPrice' => 'XOF. '.number_format((float)$item->cost_price, 2, '.', ''),
+    //             'minPrice' => 'XOF. '.number_format((float)$minPrice, 2, '.', ''),
+    //             'maxPrice' => 'XOF. '.number_format((float)$maxPrice, 2, '.', ''),
+    //             'stock' => $stock
+    //         ); 
+    //     }
+
+    //     // dd($myArr);
+    //     $fileName = "CP-SP-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($from_date)).".csv";
+    //     $headers = array(
+    //         "Content-type"        => "text/csv",
+    //         "Content-Disposition" => "attachment; filename=$fileName",
+    //         "Pragma"              => "no-cache",
+    //         "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+    //         "Expires"             => "0"
+    //     );
+       
+    //     $columns = array('Product','Subcategory','Cost Price','Min Sell Price','Max Sell Price','Pcs Per Ctn', 'Stock');
+
+
+    //     $callback = function() use($myArr, $columns) {
+    //         $file = fopen('php://output', 'w');
+    //         fputcsv($file, $columns);            
+
+    //         foreach ($myArr as $item) {          
+    //             $row['Product']  = $item['product'];
+    //             $row['Subcategory'] = $item['subcat_name'];
+    //             $row['Cost Price'] = $item['costPrice'];
+    //             $row['Min Sell Price'] = $item['minPrice'];
+    //             $row['Max Sell Price'] = $item['maxPrice'];
+    //             $row['Pcs Per Ctn'] = $item['pcs'];
+    //             $row['Stock'] = $item['stock'];
+                                
+    //             fputcsv($file, array($row['Product'], $row['Subcategory'],$row['Cost Price'], $row['Min Sell Price'], $row['Max Sell Price'], $row['Pcs Per Ctn'], $row['Stock'] ));                
+    //         }
+    //         fclose($file);
+    //     };
+    //     return response()->stream($callback, 200, $headers);
+
+
+
+
+
+    // }
 
     public function store_due_payment(Request $request)
     {
@@ -393,34 +443,36 @@ class ReportController extends Controller
         }
         ## ## ## ## ## ## ## ## ## ## ## ## ##
 
+        $fileName = "Vozen-Store-Dues-" . date('Ymd') . ".xlsx";
+        return Excel::download(new StoreDuePaymentsExport($finalArr), $fileName);
 
-        $fileName = "Vozen-Store-Dues-".date('Ymd').".csv";
-        $headers = array(
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        );
+        // $fileName = "Vozen-Store-Dues-".date('Ymd').".csv";
+        // $headers = array(
+        //     "Content-type"        => "text/csv",
+        //     "Content-Disposition" => "attachment; filename=$fileName",
+        //     "Pragma"              => "no-cache",
+        //     "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+        //     "Expires"             => "0"
+        // );
        
-        $columns = array('Store','Due Remaining','Unpaid Amount');
+        // $columns = array('Store','Due Remaining','Unpaid Amount');
 
 
-        $callback = function() use($finalArr, $columns) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns);            
+        // $callback = function() use($finalArr, $columns) {
+        //     $file = fopen('php://output', 'w');
+        //     fputcsv($file, $columns);            
 
-            foreach ($finalArr as $item) {    
-                $amount = $item['amount'];
-                $row['Store']  = $item['store_name'];
-                $row['Due Remaining'] = $item['due_days'].' days';
-                $row['Unpaid Amount'] = replaceMinusSign($amount)." ".getCrDr($amount);
+        //     foreach ($finalArr as $item) {    
+        //         $amount = $item['amount'];
+        //         $row['Store']  = $item['store_name'];
+        //         $row['Due Remaining'] = $item['due_days'].' days';
+        //         $row['Unpaid Amount'] = replaceMinusSign($amount)." ".getCrDr($amount);
                                 
-                fputcsv($file, array($row['Store'], $row['Due Remaining'],$row['Unpaid Amount']));                
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
+        //         fputcsv($file, array($row['Store'], $row['Due Remaining'],$row['Unpaid Amount']));                
+        //     }
+        //     fclose($file);
+        // };
+        // return response()->stream($callback, 200, $headers);
 
 
 
@@ -753,14 +805,16 @@ class ReportController extends Controller
     public function sales_analysis_csv(Request $request)
     {
         # sales analysis csv...
-
         $from_date = !empty($request->from_date)?$request->from_date:date('Y-m-01', strtotime(date('Y-m-d')));
         $to_date = !empty($request->to_date)?$request->to_date:date('Y-m-d');
-        
+
         $proidc = !empty($request->proidc)?$request->proidc:'';
+        $storeidc = !empty($request->storeidc)?$request->storeidc:'';
+        $product_ids = [];
         if(!empty($proidc)){
             $product_ids = explode(",",$proidc);
         }
+        $store_ids = [];
         if(!empty($storeidc)){
             $store_ids = explode(",",$storeidc);
         }
@@ -808,46 +862,50 @@ class ReportController extends Controller
         }
 
         // dd($myArr);
-        $fileName = "vozen-sales-analysis-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".csv";
-        $headers = array(
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        );
+        $fileName = "vozen-sales-analysis-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".xlsx";
+
+        return Excel::download(new SalesAnalysisExport($from_date, $to_date, $product_ids, $store_ids),
+        $fileName
+    );
+        // $headers = array(
+        //     "Content-type"        => "text/csv",
+        //     "Content-Disposition" => "attachment; filename=$fileName",
+        //     "Pragma"              => "no-cache",
+        //     "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+        //     "Expires"             => "0"
+        // );
        
-        $spaceColumn1 = array('','','','','','','','','');
-        $columns = array('#','Date','Product','Store','Order No / Invoice No','Total Cartons','Total Pieces','Rate','Total');
-        $fromDateColumn = array('','From Date:- '.date('d/m/Y', strtotime($from_date)).'');
-        $toDateColumn = array('','To Date:- '.date('d/m/Y', strtotime($to_date)).'');
+        // $spaceColumn1 = array('','','','','','','','','');
+        // $columns = array('#','Date','Product','Store','Order No / Invoice No','Total Cartons','Total Pieces','Rate','Total');
+        // $fromDateColumn = array('','From Date:- '.date('d/m/Y', strtotime($from_date)).'');
+        // $toDateColumn = array('','To Date:- '.date('d/m/Y', strtotime($to_date)).'');
 
 
-        $callback = function() use($myArr, $spaceColumn1,$fromDateColumn,$toDateColumn,$columns) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $spaceColumn1);
-            fputcsv($file, $fromDateColumn);
-            fputcsv($file, $toDateColumn);
-            fputcsv($file, $columns);
-            $i=1;
-            foreach ($myArr as $item) {
-                $row['#'] = $i;      
-                $row['Date']  = $item['date'];
-                $row['Product'] = $item['product'];
-                $row['Store'] = $item['store'];
-                $row['Order No / Invoice No'] = $item['order_no_invoice_no'];
-                $row['Total Cartons'] = $item['total_ctns'];
-                $row['Total Pieces'] = $item['total_pcs'];
-                $row['Rate'] = $item['piece_price'];
-                $row['Total'] = $item['total_price'];
+        // $callback = function() use($myArr, $spaceColumn1,$fromDateColumn,$toDateColumn,$columns) {
+        //     $file = fopen('php://output', 'w');
+        //     fputcsv($file, $spaceColumn1);
+        //     fputcsv($file, $fromDateColumn);
+        //     fputcsv($file, $toDateColumn);
+        //     fputcsv($file, $columns);
+        //     $i=1;
+        //     foreach ($myArr as $item) {
+        //         $row['#'] = $i;      
+        //         $row['Date']  = $item['date'];
+        //         $row['Product'] = $item['product'];
+        //         $row['Store'] = $item['store'];
+        //         $row['Order No / Invoice No'] = $item['order_no_invoice_no'];
+        //         $row['Total Cartons'] = $item['total_ctns'];
+        //         $row['Total Pieces'] = $item['total_pcs'];
+        //         $row['Rate'] = $item['piece_price'];
+        //         $row['Total'] = $item['total_price'];
                                 
-                fputcsv($file, array($row['#'] ,$row['Date'], $row['Product'], $row['Store'],$row['Order No / Invoice No'], $row['Total Cartons'], $row['Total Pieces'], $row['Rate'], $row['Total'] )); 
+        //         fputcsv($file, array($row['#'] ,$row['Date'], $row['Product'], $row['Store'],$row['Order No / Invoice No'], $row['Total Cartons'], $row['Total Pieces'], $row['Rate'], $row['Total'] )); 
                 
-                $i++;
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
+        //         $i++;
+        //     }
+        //     fclose($file);
+        // };
+        // return response()->stream($callback, 200, $headers);
 
     }
 
@@ -1256,47 +1314,50 @@ class ReportController extends Controller
         // array_unshift($myArr,$obArr);
 
         // dd($myArr);
-        $fileName = "vozen-stockledger-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".csv";
+        $fileName = "vozen-stockledger-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".xlsx";
+
+        return Excel::download(new StockLedgerExport($from_date, $to_date , $product_ids), $fileName);
+
         // dd($fileName);
-        $headers = array(
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        );
+        // $headers = array(
+        //     "Content-type"        => "text/csv",
+        //     "Content-Disposition" => "attachment; filename=$fileName",
+        //     "Pragma"              => "no-cache",
+        //     "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+        //     "Expires"             => "0"
+        // );
 
-        $spaceColumn1 = array('','','','','','','');
-        $fromDateColumn = array('','From: '.date('d/m/Y', strtotime($from_date)));
-        $toDateColumn = array('','From: '.date('d/m/Y', strtotime($to_date)));
-        $columns = array('Date','Product','Purpose','Paticular','Rate','In','Out');
+        // $spaceColumn1 = array('','','','','','','');
+        // $fromDateColumn = array('','From: '.date('d/m/Y', strtotime($from_date)));
+        // $toDateColumn = array('','From: '.date('d/m/Y', strtotime($to_date)));
+        // $columns = array('Date','Product','Purpose','Paticular','Rate','In','Out');
 
-        // dd($myArr);
+        // // dd($myArr);
 
-        $callback = function() use($myArr, $spaceColumn1,$fromDateColumn,$toDateColumn,$columns) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $spaceColumn1);
-            fputcsv($file, $fromDateColumn);
-            fputcsv($file, $toDateColumn);
-            fputcsv($file, $columns);
+        // $callback = function() use($myArr, $spaceColumn1,$fromDateColumn,$toDateColumn,$columns) {
+        //     $file = fopen('php://output', 'w');
+        //     fputcsv($file, $spaceColumn1);
+        //     fputcsv($file, $fromDateColumn);
+        //     fputcsv($file, $toDateColumn);
+        //     fputcsv($file, $columns);
             
-            $net_quantity = 0; 
-            foreach ($myArr as $item) {   
+        //     $net_quantity = 0; 
+        //     foreach ($myArr as $item) {   
                 
 
-                $row['Date']  = date('d/m/Y', strtotime($item['entry_date']));
-                $row['Product'] = $item['product'];
-                $row['Purpose'] = $item['purpose'];
-                $row['Paticular'] = $item['particular'];
-                $row['Rate'] = !empty($item['piece_price'])?'XOF. '.number_format((float)$item['piece_price'], 2, '.', ''):'';
-                $row['In'] = $item['in'];
-                $row['Out'] = $item['out'];
+        //         $row['Date']  = date('d/m/Y', strtotime($item['entry_date']));
+        //         $row['Product'] = $item['product'];
+        //         $row['Purpose'] = $item['purpose'];
+        //         $row['Paticular'] = $item['particular'];
+        //         $row['Rate'] = !empty($item['piece_price'])?'XOF. '.number_format((float)$item['piece_price'], 2, '.', ''):'';
+        //         $row['In'] = $item['in'];
+        //         $row['Out'] = $item['out'];
                                 
-                fputcsv($file, array($row['Date'],$row['Product'], $row['Purpose'], $row['Paticular'], $row['Rate'], $row['In'], $row['Out'], ));                
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
+        //         fputcsv($file, array($row['Date'],$row['Product'], $row['Purpose'], $row['Paticular'], $row['Rate'], $row['In'], $row['Out'], ));                
+        //     }
+        //     fclose($file);
+        // };
+        // return response()->stream($callback, 200, $headers);
 
     }
 
@@ -1412,32 +1473,36 @@ class ReportController extends Controller
 
         
         
-        $fileName = "vozen-paymentcollection-".date('Ymd',strtotime($to_date))."-".date('Ymd',strtotime($from_date)).".csv";
-        $headers = array(
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
+        $fileName = "vozen-paymentcollection-".date('Ymd',strtotime($to_date))."-".date('Ymd',strtotime($from_date)).".xlsx";
+         return Excel::download(
+            new PaymentCollectionReportExport($myArr),
+            $fileName
         );
+        // $headers = array(
+        //     "Content-type"        => "text/csv",
+        //     "Content-Disposition" => "attachment; filename=$fileName",
+        //     "Pragma"              => "no-cache",
+        //     "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+        //     "Expires"             => "0"
+        // );
 
-        $columns = array('Date','Voucher No','Store','Amount');
+        // $columns = array('Date','Voucher No','Store','Amount');
 
-        $callback = function() use($myArr, $columns) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns);
-            
-            foreach ($myArr as $item) {    
-                $row['Date']  = $item['date'];
-                $row['Order No'] = $item['voucher_no'];
-                $row['Store'] = $item['store'];                
-                $row['Amount'] = $item['amount'];
+        // $callback = function() use($myArr, $columns) {
+        //     $file = fopen('php://output', 'w');
+        //     fputcsv($file, $columns);
+
+        //     foreach ($myArr as $item) {    
+        //         $row['Date']  = $item['date'];
+        //         $row['Order No'] = $item['voucher_no'];
+        //         $row['Store'] = $item['store'];                
+        //         $row['Amount'] = $item['amount'];
                                 
-                fputcsv($file, array($row['Date'], $row['Order No'], $row['Store'], $row['Amount']));                
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
+        //         fputcsv($file, array($row['Date'], $row['Order No'], $row['Store'], $row['Amount']));                
+        //     }
+        //     fclose($file);
+        // };
+        // return response()->stream($callback, 200, $headers);
         
 
     }
@@ -1951,234 +2016,472 @@ class ReportController extends Controller
     }
 
     public function user_ledger_csv(Request $request)
-    {
-        
-        $user_type = !empty($request->user_type)?$request->user_type:'';
-        $store_id = !empty($request->store_id)?$request->store_id:0;
-        $staff_id = !empty($request->staff_id)?$request->staff_id:0;
-        $admin_id = !empty($request->admin_id)?$request->admin_id:0;
-        $supplier_id = !empty($request->supplier_id)?$request->supplier_id:0;
-        $select_user_name = !empty($request->select_user_name)?$request->select_user_name:'';
-        $from_date = !empty($request->from_date)?$request->from_date:'';
-        $to_date = !empty($request->to_date)?$request->to_date:'';
-        $sort_by = !empty($request->sort_by)?$request->sort_by:'asc';
+{
+    $user_type = !empty($request->user_type) ? $request->user_type : '';
+    $store_id = !empty($request->store_id) ? $request->store_id : 0;
+    $staff_id = !empty($request->staff_id) ? $request->staff_id : 0;
+    $admin_id = !empty($request->admin_id) ? $request->admin_id : 0;
+    $supplier_id = !empty($request->supplier_id) ? $request->supplier_id : 0;
+    $select_user_name = !empty($request->select_user_name) ? $request->select_user_name : '';
+    $from_date = !empty($request->from_date) ? $request->from_date : '';
+    $to_date = !empty($request->to_date) ? $request->to_date : '';
+    $sort_by = !empty($request->sort_by) ? $request->sort_by : 'asc';
 
-        if(Auth::user()->designation == NULL){
-            $bank_cash = !empty($request->bank_cash)?$request->bank_cash:'';
-        } else {
-            $bank_cash = 'bank';
-        }
+    if (Auth::user()->designation == NULL) {
+        $bank_cash = !empty($request->bank_cash) ? $request->bank_cash : '';
+    } else {
+        $bank_cash = 'bank';
+    }
 
-        
+    $fileName = ucwords($user_type) . "-" . date('Y-m-d-H-i-s-A') . ".xlsx";
 
-        
+    $day_opening_amount = 0;
+    $is_opening_bal = 0;
+    $is_opening_bal_showable = 1;
+    $opening_bal_date = "";
 
-        $fileName = ucwords($user_type)."-".date('Y-m-d-H-i-s-A').".csv";
-        
-        $data = $outstanding = array();
-        $day_opening_amount = $is_opening_bal =  0;
-        $is_opening_bal_showable = 1;
-        $opening_bal_date = "";
-        
-        
-        if(!empty($user_type)){
-            
-            DB::enableQueryLog();
-            $data = DB::table('ledger AS l')->select('l.*','p.voucher_no','p.payment_in','p.amount AS payment_amount','p.payment_mode','p.chq_utr_no','p.narration');
-            
-            $opening_bal = DB::table('ledger');
+    $myArr = [];
 
-            if($user_type == 'store' && !empty($store_id)){
-                $data = $data->where('l.user_type', 'store')->where('l.store_id',$store_id);
-                
-                $opening_bal = $opening_bal->where('user_type',$user_type)->where('store_id',$store_id);
-            }else if($user_type == 'staff'  && !empty($staff_id)){
-                $data = $data->where('l.user_type', 'staff')->where('l.staff_id',$staff_id);
-                
-                $opening_bal = $opening_bal->where('user_type',$user_type)->where('staff_id',$staff_id);
+    if (!empty($user_type)) {
 
-                $notCommData = DB::table('ledger')->where('user_type', 'staff')->where('staff_id',$staff_id)->whereRaw("(DATE_FORMAT(entry_date, '%Y-%m') < '2023-10' AND purpose = 'payment_collection_commission'  )")->pluck('id')->toArray();  
+        $data = DB::table('ledger AS l')
+            ->select(
+                'l.*',
+                'p.voucher_no',
+                'p.payment_in',
+                'p.amount AS payment_amount',
+                'p.payment_mode',
+                'p.chq_utr_no',
+                'p.narration'
+            );
 
-                if(!empty($notCommData)){
-                    // dd($notCommData);
-                    $data = $data->whereNotIn('l.id',$notCommData);
-                    $opening_bal = $opening_bal->whereNotIn('id',$notCommData);
-                }
+        $opening_bal = DB::table('ledger');
 
+        if ($user_type == 'store' && !empty($store_id)) {
+            $data = $data->where('l.user_type', 'store')->where('l.store_id', $store_id);
+            $opening_bal = $opening_bal->where('user_type', 'store')->where('store_id', $store_id);
+        } elseif ($user_type == 'staff' && !empty($staff_id)) {
 
-            }else if($user_type == 'partner' && !empty($admin_id)){
-                $data = $data->where('l.user_type', 'partner')->where('l.admin_id',$admin_id);
-                
-                $opening_bal = $opening_bal->where('user_type',$user_type)->where('admin_id',$admin_id);
-            }else if($user_type == 'supplier' && !empty($supplier_id)){
-                $data = $data->where('l.user_type','supplier')->where('l.supplier_id',$supplier_id);
-                $opening_bal = $opening_bal->where('user_type',$user_type)->where('supplier_id',$supplier_id);
+            $data = $data->where('l.user_type', 'staff')->where('l.staff_id', $staff_id);
+            $opening_bal = $opening_bal->where('user_type', 'staff')->where('staff_id', $staff_id);
+
+            $notCommData = DB::table('ledger')
+                ->where('user_type', 'staff')
+                ->where('staff_id', $staff_id)
+                ->whereRaw("(DATE_FORMAT(entry_date, '%Y-%m') < '2023-10' AND purpose = 'payment_collection_commission')")
+                ->pluck('id')
+                ->toArray();
+
+            if (!empty($notCommData)) {
+                $data = $data->whereNotIn('l.id', $notCommData);
+                $opening_bal = $opening_bal->whereNotIn('id', $notCommData);
             }
 
-            $check_ob_exist_store = DB::table('ledger')->where('purpose','opening_balance')->where('user_type', 'store')->where('store_id',$store_id)->orderBy('id','asc')->first();
+        } elseif ($user_type == 'partner' && !empty($admin_id)) {
+            $data = $data->where('l.user_type', 'partner')->where('l.admin_id', $admin_id);
+            $opening_bal = $opening_bal->where('user_type', 'partner')->where('admin_id', $admin_id);
+        } elseif ($user_type == 'supplier' && !empty($supplier_id)) {
+            $data = $data->where('l.user_type', 'supplier')->where('l.supplier_id', $supplier_id);
+            $opening_bal = $opening_bal->where('user_type', 'supplier')->where('supplier_id', $supplier_id);
+        }
 
-            if(!empty($check_ob_exist_store)){
-                $from_date = ($request->from_date < $check_ob_exist_store->entry_date) ? $check_ob_exist_store->entry_date : $request->from_date;
-                $is_opening_bal = 1;
-                $opening_bal_date = $check_ob_exist_store->entry_date;
+        /* -------- OPENING BALANCE STORE -------- */
 
-                if($from_date == $check_ob_exist_store->entry_date){                    
-                    $is_opening_bal_showable = 0;                    
-                } else {
-                    $opening_bal = $opening_bal->whereRaw(" entry_date BETWEEN '".$check_ob_exist_store->entry_date."' AND '".date('Y-m-d', strtotime('-1 day', strtotime($from_date)))."'  ");
-                }                
-                
+        $check_ob_exist_store = DB::table('ledger')
+            ->where('purpose', 'opening_balance')
+            ->where('user_type', 'store')
+            ->where('store_id', $store_id)
+            ->orderBy('id', 'asc')
+            ->first();
+
+        if (!empty($check_ob_exist_store)) {
+
+            $from_date = ($request->from_date < $check_ob_exist_store->entry_date)
+                ? $check_ob_exist_store->entry_date
+                : $request->from_date;
+
+            $is_opening_bal = 1;
+            $opening_bal_date = $check_ob_exist_store->entry_date;
+
+            if ($from_date == $check_ob_exist_store->entry_date) {
+                $is_opening_bal_showable = 0;
             } else {
-                // die('Hi');
-                $opening_bal = $opening_bal->whereRaw(" entry_date <= '".date('Y-m-d', strtotime('-1 day', strtotime($from_date)))."'  ");
-            } 
+                $opening_bal = $opening_bal->whereRaw(
+                    "entry_date BETWEEN '{$check_ob_exist_store->entry_date}' AND '" .
+                    date('Y-m-d', strtotime('-1 day', strtotime($from_date))) . "'"
+                );
+            }
 
-            /* +++++++++++++++++++ */
+        } else {
+            $opening_bal = $opening_bal->whereRaw(
+                "entry_date <= '" . date('Y-m-d', strtotime('-1 day', strtotime($from_date))) . "'"
+            );
+        }
 
-            $check_ob_exist_partner = DB::table('ledger')->where('purpose','opening_balance')->where('user_type', 'partner')->where('admin_id',$admin_id)->orderBy('id','asc')->first();
+        /* -------- OPENING BALANCE PARTNER -------- */
 
-            if(!empty($check_ob_exist_partner)){
-                $from_date = ($request->from_date < $check_ob_exist_partner->entry_date) ? $check_ob_exist_partner->entry_date : $request->from_date;
-                $is_opening_bal = 1;
-                $opening_bal_date = $check_ob_exist_partner->entry_date;
+        $check_ob_exist_partner = DB::table('ledger')
+            ->where('purpose', 'opening_balance')
+            ->where('user_type', 'partner')
+            ->where('admin_id', $admin_id)
+            ->orderBy('id', 'asc')
+            ->first();
 
-                if($from_date == $check_ob_exist_partner->entry_date){                    
-                    $is_opening_bal_showable = 0;                    
-                } else {
-                    $opening_bal = $opening_bal->whereRaw(" entry_date BETWEEN '".$check_ob_exist_partner->entry_date."' AND '".date('Y-m-d', strtotime('-1 day', strtotime($from_date)))."'  ");
-                }                
-                
+        if (!empty($check_ob_exist_partner)) {
+
+            $from_date = ($request->from_date < $check_ob_exist_partner->entry_date)
+                ? $check_ob_exist_partner->entry_date
+                : $request->from_date;
+
+            $is_opening_bal = 1;
+            $opening_bal_date = $check_ob_exist_partner->entry_date;
+
+            if ($from_date == $check_ob_exist_partner->entry_date) {
+                $is_opening_bal_showable = 0;
             } else {
-                // die('Hi');
-                $opening_bal = $opening_bal->whereRaw(" entry_date <= '".date('Y-m-d', strtotime('-1 day', strtotime($from_date)))."'  ");
-            } 
+                $opening_bal = $opening_bal->whereRaw(
+                    "entry_date BETWEEN '{$check_ob_exist_partner->entry_date}' AND '" .
+                    date('Y-m-d', strtotime('-1 day', strtotime($from_date))) . "'"
+                );
+            }
+
+        } else {
+            $opening_bal = $opening_bal->whereRaw(
+                "entry_date <= '" . date('Y-m-d', strtotime('-1 day', strtotime($from_date))) . "'"
+            );
+        }
+
+        if (!empty($from_date) && !empty($to_date)) {
+            $data = $data->whereRaw("l.entry_date BETWEEN '{$from_date}' AND '{$to_date}'");
+        }
+
+        if (Auth::user()->type == 2) {
+            $opening_bal = $opening_bal->where('is_gst', 1);
+        }
+
+        $opening_bal = $opening_bal
+            ->orderBy('entry_date', $sort_by)
+            ->orderBy('updated_at', $sort_by)
+            ->get();
+
+        foreach ($opening_bal as $ob) {
+            if (!empty($ob->is_credit)) {
+                $day_opening_amount += $ob->transaction_amount;
+            }
+            if (!empty($ob->is_debit)) {
+                $day_opening_amount -= $ob->transaction_amount;
+            }
+        }
+
+        if (!empty($bank_cash)) {
+            $data = $data->where('l.bank_cash', $bank_cash);
+        }
+
+        $data = $data->leftJoin('payment AS p', 'p.id', 'l.payment_id')
+            ->orderBy('l.entry_date', $sort_by)
+            ->orderBy('l.updated_at', $sort_by)
+            ->get()
+            ->toArray();
+
+        foreach ($data as $item) {
+            $myArr[] = [
+                'is_credit' => $item->is_credit,
+                'is_debit' => $item->is_debit,
+                'purpose' => $item->purpose,
+                'transaction_id' => $item->transaction_id,
+                'transaction_amount' => $item->transaction_amount,
+                'entry_date' => $item->entry_date,
+                'payment_mode' => $item->payment_mode,
+                'bank_cash' => $item->bank_cash
+            ];
+        }
+
+        if (!empty($is_opening_bal_showable)) {
+
+            $is_credit = $is_debit = 0;
+            $getCrDrOB = getCrDr($day_opening_amount);
+
+            if ($getCrDrOB == 'Cr') $is_credit = 1;
+            if ($getCrDrOB == 'Dr') $is_debit = 1;
+
+            array_unshift($myArr, [
+                'is_credit' => $is_credit,
+                'is_debit' => $is_debit,
+                'purpose' => 'Opening Balance',
+                'transaction_id' => '',
+                'transaction_amount' => replaceMinusSign($day_opening_amount),
+                'entry_date' => $from_date,
+                'payment_mode' => '',
+                'bank_cash' => ''
+            ]);
+        }
+    }
+
+    /* ================= EXCEL PREP ================= */
+
+    $excelRows = [];
+    $net_value = 0;
+
+    foreach ($myArr as $item) {
+
+        $creditAmt = $debitAmt = '';
+
+        if ($item['is_credit'] == 1) {
+            $creditAmt = $item['transaction_amount'];
+            $net_value += $item['transaction_amount'];
+        }
+
+        if ($item['is_debit'] == 1) {
+            $debitAmt = $item['transaction_amount'];
+            $net_value -= $item['transaction_amount'];
+        }
+
+        $show_payment_mode = !empty($item['bank_cash'])
+            ? "( " . ucwords($item['bank_cash']) . " )"
+            : "";
+
+        $excelRows[] = [
+            'Date' => date('d/m/Y', strtotime($item['entry_date'])),
+            'Transaction Id / Voucher No' => $item['transaction_id'],
+            'Purpose' => ucwords(str_replace("_", " ", $item['purpose'])) . " " . $show_payment_mode,
+            'Debit' => replaceMinusSign($debitAmt),
+            'Credit' => $creditAmt,
+            'Closing' => replaceMinusSign($net_value) . " " . getCrDr($net_value),
+        ];
+    }
+
+    return Excel::download(new UserLedgerExport($excelRows), $fileName);
+}
+
+    // public function user_ledger_csv(Request $request)
+    // {
+        
+    //     $user_type = !empty($request->user_type)?$request->user_type:'';
+    //     $store_id = !empty($request->store_id)?$request->store_id:0;
+    //     $staff_id = !empty($request->staff_id)?$request->staff_id:0;
+    //     $admin_id = !empty($request->admin_id)?$request->admin_id:0;
+    //     $supplier_id = !empty($request->supplier_id)?$request->supplier_id:0;
+    //     $select_user_name = !empty($request->select_user_name)?$request->select_user_name:'';
+    //     $from_date = !empty($request->from_date)?$request->from_date:'';
+    //     $to_date = !empty($request->to_date)?$request->to_date:'';
+    //     $sort_by = !empty($request->sort_by)?$request->sort_by:'asc';
+
+    //     if(Auth::user()->designation == NULL){
+    //         $bank_cash = !empty($request->bank_cash)?$request->bank_cash:'';
+    //     } else {
+    //         $bank_cash = 'bank';
+    //     }
+
+        
+
+        
+
+    //     $fileName = ucwords($user_type)."-".date('Y-m-d-H-i-s-A').".xlsx";
+        
+    //     $data = $outstanding = array();
+    //     $day_opening_amount = $is_opening_bal =  0;
+    //     $is_opening_bal_showable = 1;
+    //     $opening_bal_date = "";
+        
+        
+    //     if(!empty($user_type)){
+            
+    //         DB::enableQueryLog();
+    //         $data = DB::table('ledger AS l')->select('l.*','p.voucher_no','p.payment_in','p.amount AS payment_amount','p.payment_mode','p.chq_utr_no','p.narration');
+            
+    //         $opening_bal = DB::table('ledger');
+
+    //         if($user_type == 'store' && !empty($store_id)){
+    //             $data = $data->where('l.user_type', 'store')->where('l.store_id',$store_id);
+                
+    //             $opening_bal = $opening_bal->where('user_type',$user_type)->where('store_id',$store_id);
+    //         }else if($user_type == 'staff'  && !empty($staff_id)){
+    //             $data = $data->where('l.user_type', 'staff')->where('l.staff_id',$staff_id);
+                
+    //             $opening_bal = $opening_bal->where('user_type',$user_type)->where('staff_id',$staff_id);
+
+    //             $notCommData = DB::table('ledger')->where('user_type', 'staff')->where('staff_id',$staff_id)->whereRaw("(DATE_FORMAT(entry_date, '%Y-%m') < '2023-10' AND purpose = 'payment_collection_commission'  )")->pluck('id')->toArray();  
+
+    //             if(!empty($notCommData)){
+    //                 // dd($notCommData);
+    //                 $data = $data->whereNotIn('l.id',$notCommData);
+    //                 $opening_bal = $opening_bal->whereNotIn('id',$notCommData);
+    //             }
+
+
+    //         }else if($user_type == 'partner' && !empty($admin_id)){
+    //             $data = $data->where('l.user_type', 'partner')->where('l.admin_id',$admin_id);
+                
+    //             $opening_bal = $opening_bal->where('user_type',$user_type)->where('admin_id',$admin_id);
+    //         }else if($user_type == 'supplier' && !empty($supplier_id)){
+    //             $data = $data->where('l.user_type','supplier')->where('l.supplier_id',$supplier_id);
+    //             $opening_bal = $opening_bal->where('user_type',$user_type)->where('supplier_id',$supplier_id);
+    //         }
+
+    //         $check_ob_exist_store = DB::table('ledger')->where('purpose','opening_balance')->where('user_type', 'store')->where('store_id',$store_id)->orderBy('id','asc')->first();
+
+    //         if(!empty($check_ob_exist_store)){
+    //             $from_date = ($request->from_date < $check_ob_exist_store->entry_date) ? $check_ob_exist_store->entry_date : $request->from_date;
+    //             $is_opening_bal = 1;
+    //             $opening_bal_date = $check_ob_exist_store->entry_date;
+
+    //             if($from_date == $check_ob_exist_store->entry_date){                    
+    //                 $is_opening_bal_showable = 0;                    
+    //             } else {
+    //                 $opening_bal = $opening_bal->whereRaw(" entry_date BETWEEN '".$check_ob_exist_store->entry_date."' AND '".date('Y-m-d', strtotime('-1 day', strtotime($from_date)))."'  ");
+    //             }                
+                
+    //         } else {
+    //             // die('Hi');
+    //             $opening_bal = $opening_bal->whereRaw(" entry_date <= '".date('Y-m-d', strtotime('-1 day', strtotime($from_date)))."'  ");
+    //         } 
+
+    //         /* +++++++++++++++++++ */
+
+    //         $check_ob_exist_partner = DB::table('ledger')->where('purpose','opening_balance')->where('user_type', 'partner')->where('admin_id',$admin_id)->orderBy('id','asc')->first();
+
+    //         if(!empty($check_ob_exist_partner)){
+    //             $from_date = ($request->from_date < $check_ob_exist_partner->entry_date) ? $check_ob_exist_partner->entry_date : $request->from_date;
+    //             $is_opening_bal = 1;
+    //             $opening_bal_date = $check_ob_exist_partner->entry_date;
+
+    //             if($from_date == $check_ob_exist_partner->entry_date){                    
+    //                 $is_opening_bal_showable = 0;                    
+    //             } else {
+    //                 $opening_bal = $opening_bal->whereRaw(" entry_date BETWEEN '".$check_ob_exist_partner->entry_date."' AND '".date('Y-m-d', strtotime('-1 day', strtotime($from_date)))."'  ");
+    //             }                
+                
+    //         } else {
+    //             // die('Hi');
+    //             $opening_bal = $opening_bal->whereRaw(" entry_date <= '".date('Y-m-d', strtotime('-1 day', strtotime($from_date)))."'  ");
+    //         } 
 
               
-            if(!empty($from_date) && !empty($to_date)){
-                $data = $data->whereRaw("l.entry_date BETWEEN '".$from_date."' AND '".$to_date."' ");
-            }
+    //         if(!empty($from_date) && !empty($to_date)){
+    //             $data = $data->whereRaw("l.entry_date BETWEEN '".$from_date."' AND '".$to_date."' ");
+    //         }
 
-            if(Auth::user()->type == 2){
-                $opening_bal = $opening_bal->where('is_gst', 1);
-            }
+    //         if(Auth::user()->type == 2){
+    //             $opening_bal = $opening_bal->where('is_gst', 1);
+    //         }
             
-            $opening_bal = $opening_bal->orderBy('entry_date',$sort_by);  
-            $opening_bal = $opening_bal->orderBy('updated_at',$sort_by);  
-            $opening_bal = $opening_bal->get();
+    //         $opening_bal = $opening_bal->orderBy('entry_date',$sort_by);  
+    //         $opening_bal = $opening_bal->orderBy('updated_at',$sort_by);  
+    //         $opening_bal = $opening_bal->get();
 
-            // dd($opening_bal);
+    //         // dd($opening_bal);
 
-            foreach($opening_bal as $ob){
-                if(!empty($ob->is_credit)){
-                    $credit_amount = $ob->transaction_amount;
-                    $day_opening_amount += $ob->transaction_amount;
-                }
-                if(!empty($ob->is_debit)){
-                    $debit_amount = $ob->transaction_amount;
-                    $day_opening_amount -= $ob->transaction_amount;
-                }
-            }
+    //         foreach($opening_bal as $ob){
+    //             if(!empty($ob->is_credit)){
+    //                 $credit_amount = $ob->transaction_amount;
+    //                 $day_opening_amount += $ob->transaction_amount;
+    //             }
+    //             if(!empty($ob->is_debit)){
+    //                 $debit_amount = $ob->transaction_amount;
+    //                 $day_opening_amount -= $ob->transaction_amount;
+    //             }
+    //         }
 
-            if(!empty($bank_cash)){
-                $data = $data->where('l.bank_cash', $bank_cash);
-            }
+    //         if(!empty($bank_cash)){
+    //             $data = $data->where('l.bank_cash', $bank_cash);
+    //         }
 
-            $data = $data->leftJoin('payment AS p','p.id','l.payment_id');
-            $data = $data->orderBy('l.entry_date',$sort_by);  
-            $data = $data->orderBy('l.updated_at',$sort_by);  
-            $data = $data->get()->toarray(); 
+    //         $data = $data->leftJoin('payment AS p','p.id','l.payment_id');
+    //         $data = $data->orderBy('l.entry_date',$sort_by);  
+    //         $data = $data->orderBy('l.updated_at',$sort_by);  
+    //         $data = $data->get()->toarray(); 
 
-            /* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
+    //         /* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
             
-            $myArr = array();
-            foreach($data  as  $item){
-                $myArr[] = array(
-                    'is_credit' => $item->is_credit,
-                    'is_debit' => $item->is_debit,
-                    'purpose' => $item->purpose,
-                    'transaction_id' => $item->transaction_id,
-                    'transaction_amount' => $item->transaction_amount,
-                    'entry_date' => $item->entry_date,
-                    'payment_mode' => $item->payment_mode,
-                    'bank_cash' => $item->bank_cash
-                ); 
+    //         $myArr = array();
+    //         foreach($data  as  $item){
+    //             $myArr[] = array(
+    //                 'is_credit' => $item->is_credit,
+    //                 'is_debit' => $item->is_debit,
+    //                 'purpose' => $item->purpose,
+    //                 'transaction_id' => $item->transaction_id,
+    //                 'transaction_amount' => $item->transaction_amount,
+    //                 'entry_date' => $item->entry_date,
+    //                 'payment_mode' => $item->payment_mode,
+    //                 'bank_cash' => $item->bank_cash
+    //             ); 
                 
-            }
+    //         }
 
             
             
             
-            if(!empty($is_opening_bal_showable)){
-                $is_credit = $is_debit = 0;
-                $getCrDrOB = getCrDr($day_opening_amount);
-                if($getCrDrOB == 'Cr'){
-                    $is_credit = 1;
-                } else if($getCrDrOB == 'Dr'){
-                    $is_debit = 1;
-                } else if($getCrDrOB == ''){
+    //         if(!empty($is_opening_bal_showable)){
+    //             $is_credit = $is_debit = 0;
+    //             $getCrDrOB = getCrDr($day_opening_amount);
+    //             if($getCrDrOB == 'Cr'){
+    //                 $is_credit = 1;
+    //             } else if($getCrDrOB == 'Dr'){
+    //                 $is_debit = 1;
+    //             } else if($getCrDrOB == ''){
                     
-                }
-                $ob_arr = array(
-                    'is_credit' => $is_credit,
-                    'is_debit' => $is_debit,
-                    'purpose' => "Opening Balance",
-                    'transaction_id' => '',
-                    'transaction_amount' => replaceMinusSign($day_opening_amount),
-                    'entry_date' => $from_date,
-                    'payment_mode' => '',
-                    'bank_cash' => ''
-                );
+    //             }
+    //             $ob_arr = array(
+    //                 'is_credit' => $is_credit,
+    //                 'is_debit' => $is_debit,
+    //                 'purpose' => "Opening Balance",
+    //                 'transaction_id' => '',
+    //                 'transaction_amount' => replaceMinusSign($day_opening_amount),
+    //                 'entry_date' => $from_date,
+    //                 'payment_mode' => '',
+    //                 'bank_cash' => ''
+    //             );
 
-                array_unshift($myArr,$ob_arr);
+    //             array_unshift($myArr,$ob_arr);
                 
-            }
-            // echo '<pre>'; print_r($myArr);
-            // echo '<pre>'; print_r($data);
-        }
+    //         }
+    //         // echo '<pre>'; print_r($myArr);
+    //         // echo '<pre>'; print_r($data);
+    //     }
 
-        // die;
+    //     // die;
 
-        $headers = array(
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        );
+    //     $headers = array(
+    //         "Content-type"        => "text/csv",
+    //         "Content-Disposition" => "attachment; filename=$fileName",
+    //         "Pragma"              => "no-cache",
+    //         "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+    //         "Expires"             => "0"
+    //     );
 
-        $columns = array('Date','Transaction Id / Voucher No', 'Purpose', 'Debit', 'Credit',  'Closing');
+    //     $columns = array('Date','Transaction Id / Voucher No', 'Purpose', 'Debit', 'Credit',  'Closing');
 
-        $callback = function() use($myArr, $columns) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns);
-            $net_value = 0;
-            
-            foreach ($myArr as $item) {
-                $creditAmt = $debitAmt = '';
-                if($item['is_credit'] == 1){
-                    $creditAmt = $item['transaction_amount'];
-                    $net_value += $item['transaction_amount'];
-                }
-                if($item['is_debit'] == 1){
-                    $debitAmt = ($item['transaction_amount']);
-                    $net_value -= $item['transaction_amount'];
-                }
-                // echo $net_value; die;
+    //     $callback = function() use($myArr, $columns) {
+    //         $file = fopen('php://output', 'w');
+    //         fputcsv($file, $columns);
+    //         $net_value = 0;
+
+    //         foreach ($myArr as $item) {
+    //             $creditAmt = $debitAmt = '';
+    //             if($item['is_credit'] == 1){
+    //                 $creditAmt = $item['transaction_amount'];
+    //                 $net_value += $item['transaction_amount'];
+    //             }
+    //             if($item['is_debit'] == 1){
+    //                 $debitAmt = ($item['transaction_amount']);
+    //                 $net_value -= $item['transaction_amount'];
+    //             }
+    //             // echo $net_value; die;
                 
-                $show_payment_mode = !empty($item['bank_cash']) ? "( ".ucwords($item['bank_cash'])." )" : "";
-                $row['Date']  = date('d/m/Y', strtotime($item['entry_date']));
-                $row['Transaction Id / Voucher No'] = $item['transaction_id'];
-                $row['Purpose'] = ucwords(str_replace("_"," ",$item['purpose']))." ".$show_payment_mode;                
-                $row['Debit']  = replaceMinusSign($debitAmt);
-                $row['Credit']    = $creditAmt;
-                $row['Closing']  =  replaceMinusSign($net_value)." ".getCrDr($net_value);
+    //             $show_payment_mode = !empty($item['bank_cash']) ? "( ".ucwords($item['bank_cash'])." )" : "";
+    //             $row['Date']  = date('d/m/Y', strtotime($item['entry_date']));
+    //             $row['Transaction Id / Voucher No'] = $item['transaction_id'];
+    //             $row['Purpose'] = ucwords(str_replace("_"," ",$item['purpose']))." ".$show_payment_mode;                
+    //             $row['Debit']  = replaceMinusSign($debitAmt);
+    //             $row['Credit']    = $creditAmt;
+    //             $row['Closing']  =  replaceMinusSign($net_value)." ".getCrDr($net_value);
 
-                fputcsv($file, array($row['Date'], $row['Transaction Id / Voucher No'],$row['Purpose'], $row['Debit'], $row['Credit'], $row['Closing']));                
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
-    }
+    //             fputcsv($file, array($row['Date'], $row['Transaction Id / Voucher No'],$row['Purpose'], $row['Debit'], $row['Credit'], $row['Closing']));                
+    //         }
+    //         fclose($file);
+    //     };
+    //     return response()->stream($callback, 200, $headers);
+    // }
 
     public function barcode_history(Request $request)
     {

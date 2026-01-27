@@ -70,7 +70,7 @@
                     <span>Total {{$totalResult}} Records</span>
                 </div>
                 <div class="col-auto">
-                    <a href="{{ route('admin.report.store-due-csv') }}?sort={{$sort}}&days_above={{$days_above}}&amount_above={{$amount_above}}&store_id={{$store_id}}&bussiness_name={{$bussiness_name}}" class="btn btn-success select-md">CSV Export</a>
+                    <a href="{{ route('admin.report.store-due-csv') }}?sort={{$sort}}&days_above={{$days_above}}&amount_above={{$amount_above}}&store_id={{$store_id}}&bussiness_name={{$bussiness_name}}" class="btn btn-success select-md"> Export</a>
                 </div>
             </div>
         </div>        

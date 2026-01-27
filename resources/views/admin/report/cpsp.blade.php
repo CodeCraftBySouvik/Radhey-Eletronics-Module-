@@ -37,7 +37,7 @@
                     <a href="{{ route('admin.report.cp-sp-report') }}?from_date={{$from_date}}&to_date={{$to_date}}" class="btn btn-outline-warning select-md">Clear Search</a>
                 </div> 
                 <div class="col-auto ms-auto">                    
-                    <a href="{{ route('admin.report.cp-sp-csv') }}?from_date={{$from_date}}&to_date={{$to_date}}&search={{$search}}" class="btn btn-success select-md">Export CSV</a>
+                    <a href="{{ route('admin.report.cp-sp-csv') }}?from_date={{$from_date}}&to_date={{$to_date}}&search={{$search}}" class="btn btn-success select-md">Export</a>
                 </div>                                
             </div>
         </div>                              

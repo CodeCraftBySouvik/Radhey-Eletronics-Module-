@@ -172,7 +172,7 @@
                                 </div>
                                 <div class="col-6 col-sm-2">
                                     <div class="form-group">
-                                        <a href="javascript:void(0)" onclick="downloadJournal('csv');" class="btn btn-outline-success select-md">Download CSV</a>
+                                        <a href="javascript:void(0)" onclick="downloadJournal('excel');" class="btn btn-outline-success select-md">Download Excel</a>
                                     </div>
                                 </div>
                                 <div class="col-auto ms-auto">                                    
@@ -316,7 +316,7 @@
         
         var dataString = "from_date="+from_date+"&to_date="+to_date+"&bank_cash="+bank_cash ;
         
-        if(e == 'csv'){
+        if(e == 'excel'){
             window.location.href = "{{ route('admin.revenue.downloadJournalCSV') }}?"+dataString; 
         }
     }

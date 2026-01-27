@@ -73,7 +73,7 @@
             </div>                
             @endif            
             <div class="col-auto ms-auto">
-                <a href="{{ route('admin.report.payment-receipt-report-csv') }}?from_date={{$from_date}}&to_date={{$to_date}}&storeidc={{$storeidc}}&citydc={{$citydc}}&bank_cash={{$bank_cash}}" class="btn btn-success select-md">Export CSV</a>
+                <a href="{{ route('admin.report.payment-receipt-report-csv') }}?from_date={{$from_date}}&to_date={{$to_date}}&storeidc={{$storeidc}}&citydc={{$citydc}}&bank_cash={{$bank_cash}}" class="btn btn-success select-md">Export Excel</a>
             </div>          
         </div>
         

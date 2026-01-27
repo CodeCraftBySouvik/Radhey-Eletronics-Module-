@@ -86,7 +86,7 @@
                     
                     @if (!empty($user_type) && !empty($select_user_name))
                     <a href="{{ route('admin.report.user-ledger-pdf') }}?from_date={{$from_date}}&to_date={{$to_date}}&user_type={{$user_type}}&staff_id={{$staff_id}}&store_id={{$store_id}}&admin_id={{$admin_id}}&supplier_id={{$supplier_id}}&select_user_name={{$select_user_name}}&sort_by={{$sort_by}}&bank_cash={{$bank_cash}}" class="btn btn-success select-md">Export PDF</a>
-                    <a href="{{ route('admin.report.user-ledger-csv') }}?from_date={{$from_date}}&to_date={{$to_date}}&user_type={{$user_type}}&staff_id={{$staff_id}}&store_id={{$store_id}}&admin_id={{$admin_id}}&supplier_id={{$supplier_id}}&select_user_name={{$select_user_name}}&sort_by={{$sort_by}}&bank_cash={{$bank_cash}}" class="btn btn-success select-md">Export CSV</a>
+                    <a href="{{ route('admin.report.user-ledger-csv') }}?from_date={{$from_date}}&to_date={{$to_date}}&user_type={{$user_type}}&staff_id={{$staff_id}}&store_id={{$store_id}}&admin_id={{$admin_id}}&supplier_id={{$supplier_id}}&select_user_name={{$select_user_name}}&sort_by={{$sort_by}}&bank_cash={{$bank_cash}}" class="btn btn-success select-md">Export Excel</a>
                     <a href="{{ route('admin.report.choose-ledger-user') }}" class="btn btn-outline-warning select-md">Reset Page</a>
                     @endif
                     

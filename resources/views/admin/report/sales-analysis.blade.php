@@ -33,7 +33,7 @@
                 </div> 
                 @if (!empty($product_ids))
                 <div class="col-auto">
-                    <a href="javascript:void(0)" onclick="downloadLedger('csv');" class="btn btn-success ">Export CSV</a>
+                    <a href="javascript:void(0)" onclick="downloadLedger('excel');" class="btn btn-success ">Export Excel</a>
                 </div>
                 @endif
                 
@@ -305,7 +305,7 @@
         
         var dataString = "from_date="+from_date+"&to_date="+to_date+"&proidc={{$proidc}}&storeidc={{$storeidc}}" ;
         
-        if(e == 'csv'){
+        if(e == 'excel'){
             window.location.href = "{{ route('admin.report.sales-analysis-csv') }}?"+dataString; 
         }
         

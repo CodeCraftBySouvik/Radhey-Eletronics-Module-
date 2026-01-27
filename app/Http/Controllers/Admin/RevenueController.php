@@ -33,7 +33,8 @@ use App\Models\Journal;
 use App\Models\Payment;
 
 use Carbon\Carbon;
-
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\DownloadJournalExport;
 
 
 class RevenueController extends Controller
@@ -852,93 +853,96 @@ class RevenueController extends Controller
 
 
 
-        $fileName = "vozen-pnl-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".csv";
+        $fileName = "vozen-pnl-".date('Ymd',strtotime($from_date))."-".date('Ymd',strtotime($to_date)).".xlsx";
 
-
+         return Excel::download(
+            new DownloadJournalExport($from_date, $to_date, $bank_cash),
+            $fileName
+        );
 
         // dd($myArr);
 
 
 
-        $headers = array(
+        // $headers = array(
 
-            "Content-type"        => "text/csv",
+        //     "Content-type"        => "text/csv",
 
-            "Content-Disposition" => "attachment; filename=$fileName",
+        //     "Content-Disposition" => "attachment; filename=$fileName",
 
-            "Pragma"              => "no-cache",
+        //     "Pragma"              => "no-cache",
 
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+        //     "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
 
-            "Expires"             => "0"
+        //     "Expires"             => "0"
 
-        );
-
-
-
-        $columns = array('Date','Transaction Id / Voucher No', 'Purpose', 'Debit', 'Credit',  'Closing');
+        // );
 
 
 
-        $callback = function() use($myArr, $columns) {
+        // $columns = array('Date','Transaction Id / Voucher No', 'Purpose', 'Debit', 'Credit',  'Closing');
 
-            $file = fopen('php://output', 'w');
 
-            fputcsv($file, $columns);
 
-            $net_value = 0;
+        // $callback = function() use($myArr, $columns) {
+
+        //     $file = fopen('php://output', 'w');
+
+        //     fputcsv($file, $columns);
+
+        //     $net_value = 0;
 
             
 
-            foreach ($myArr as $item) {
+        //     foreach ($myArr as $item) {
 
-                $creditAmt = $debitAmt = '';
+        //         $creditAmt = $debitAmt = '';
 
-                if($item['is_credit'] == 1){
+        //         if($item['is_credit'] == 1){
 
-                    $creditAmt = $item['transaction_amount'];
+        //             $creditAmt = $item['transaction_amount'];
 
-                    $net_value += $item['transaction_amount'];
+        //             $net_value += $item['transaction_amount'];
 
-                }
+        //         }
 
-                if($item['is_debit'] == 1){
+        //         if($item['is_debit'] == 1){
 
-                    $debitAmt = ($item['transaction_amount']);
+        //             $debitAmt = ($item['transaction_amount']);
 
-                    $net_value -= $item['transaction_amount'];
+        //             $net_value -= $item['transaction_amount'];
 
-                }
+        //         }
 
-                // echo $net_value; die;
+        //         // echo $net_value; die;
 
                 
 
-                $show_payment_mode = !empty($item['bank_cash']) ? "( ".ucwords($item['bank_cash'])." )" : "";
+        //         $show_payment_mode = !empty($item['bank_cash']) ? "( ".ucwords($item['bank_cash'])." )" : "";
 
-                $row['Date']  = date('d/m/Y', strtotime($item['entry_date']));
+        //         $row['Date']  = date('d/m/Y', strtotime($item['entry_date']));
 
-                $row['Transaction Id / Voucher No'] = $item['purpose_id'];
+        //         $row['Transaction Id / Voucher No'] = $item['purpose_id'];
 
-                $row['Purpose'] = ucwords(str_replace("_"," ",$item['purpose']))." ".$show_payment_mode;                
+        //         $row['Purpose'] = ucwords(str_replace("_"," ",$item['purpose']))." ".$show_payment_mode;                
 
-                $row['Debit']  = replaceMinusSign($debitAmt);
+        //         $row['Debit']  = replaceMinusSign($debitAmt);
 
-                $row['Credit']    = $creditAmt;
+        //         $row['Credit']    = $creditAmt;
 
-                $row['Closing']  =  replaceMinusSign($net_value)." ".getCrDr($net_value);
+        //         $row['Closing']  =  replaceMinusSign($net_value)." ".getCrDr($net_value);
 
 
 
-                fputcsv($file, array($row['Date'], $row['Transaction Id / Voucher No'],$row['Purpose'], $row['Debit'], $row['Credit'], $row['Closing']));                
+        //         fputcsv($file, array($row['Date'], $row['Transaction Id / Voucher No'],$row['Purpose'], $row['Debit'], $row['Credit'], $row['Closing']));                
 
-            }
+        //     }
 
-            fclose($file);
+        //     fclose($file);
 
-        };
+        // };
 
-        return response()->stream($callback, 200, $headers);
+        // return response()->stream($callback, 200, $headers);
 
 
 

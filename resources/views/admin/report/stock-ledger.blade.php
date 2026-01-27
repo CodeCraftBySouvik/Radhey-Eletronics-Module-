@@ -55,7 +55,7 @@
                     <a href="{{ route('admin.report.stock-ledger') }}?from_date={{$from_date}}&to_date={{$to_date}}" class="btn btn-outline-warning">Reset Product</a>
                 </div>
                 <div class="col-auto">
-                    <a href="javascript:void(0)" onclick="downloadLedger('csv');" class="btn btn-outline-success">Export CSV</a>
+                    <a href="javascript:void(0)" onclick="downloadLedger('excel');" class="btn btn-outline-success">Export Excel</a>
                 </div>
                 @endif
                 
@@ -460,7 +460,7 @@
 
         var dataString = "from_date="+from_date+"&to_date="+to_date+"&proidc={{$proidc}}" ;
         
-        if(e == 'csv'){
+        if(e == 'excel'){
             window.location.href = "{{ route('admin.report.stock-ledger-csv') }}?"+dataString; 
         }
         
