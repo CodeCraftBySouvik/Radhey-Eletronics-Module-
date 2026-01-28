@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Cart;
 use App\Models\OrderProduct;
+use App\Models\PaymentCollection;
+use App\Models\Ledger;
+use App\Models\Store;
 use App\StoreVisit;
 
 class OrderRepository implements OrderInterface
@@ -188,13 +191,13 @@ class OrderRepository implements OrderInterface
     {
         $store = Store::find($storeId);
         if (!$store) {
-            return ['status' => false, 'message' => 'Invalid store'];
+            return ['outstanding' => 0, 'due_days' => 0];
         }
 
         $ledgerAmount = getStoreLedgerAmount($storeId);
-        $outstanding = $ledgerAmount['outstanding'];
+        $outstanding = replaceMinusSign($ledgerAmount['outstanding']);
 
-        if ($outstanding >= 0) {
+        if ($outstanding <= 0) {
             return [
                 'outstanding' => 0,
                 'due_days' => 0
@@ -204,43 +207,23 @@ class OrderRepository implements OrderInterface
         $total_payment = PaymentCollection::where('store_id', $storeId)
             ->sum('collection_amount');
 
-        $last_bill_amount = Ledger::where('store_id', $storeId)
+        $invoice_date = Ledger::where('store_id', $storeId)
             ->where('is_debit', 1)
-            ->orderBy('entry_date', 'desc')
-            ->first();
+            ->whereRaw('transaction_amount > ?', [$total_payment])
+            ->orderBy('entry_date', 'asc')
+            ->value('entry_date');
 
-        $invoice_date = null;
-        $total = 0;
-
-        if ($last_bill_amount &&
-            $last_bill_amount->transaction_amount == replaceMinusSign($outstanding)) {
-            $invoice_date = $last_bill_amount->entry_date;
-        } else {
-            $bills = Ledger::where('store_id', $storeId)
-                ->where('is_debit', 1)
-                ->orderBy('entry_date')
-                ->get();
-
-            foreach ($bills as $bill) {
-                $total += $bill->transaction_amount;
-                if ($total > $total_payment) {
-                    $invoice_date = $bill->entry_date;
-                    break;
-                }
-            }
-        }
-
-        $due_days = 0;
-        if ($invoice_date) {
-            $due_days = now()->diffInDays($invoice_date);
-        }
+        $due_days = $invoice_date
+            ? now()->diffInDays($invoice_date)
+            : 0;
 
         return [
-            'outstanding' => replaceMinusSign($outstanding),
+            'outstanding' => $outstanding,
             'due_days' => $due_days,
             'invoice_date' => $invoice_date
         ];
     }
+
 
     public function placeOrder(array $data){
         $collectedData = collect($data);
@@ -273,7 +256,7 @@ class OrderRepository implements OrderInterface
             $storeId = $collectedData['store_id'];
 
             // get due info (same logic as store due report)
-            $creditInfo = getStoreCreditStatus($storeId);
+            $creditInfo = $this->getStoreCreditStatus($storeId);
             dd($creditInfo['outstanding'] + $subtotal);
             // fetch store credit config
             $store = Store::find($storeId);
