@@ -2,8 +2,63 @@
 <html>
 <head>
 	<title>{{ $packingslip->slipno }}</title>
+     <style>
+        body{
+            font-family: 'Rubik', sans-serif;
+            font-size: 12px;
+            color: #000;
+        }
+        table{
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td{
+            border: 1px solid #000;
+        }
+        .no-border{
+            border: none !important;
+        }
+        .text-center{ text-align: center; }
+        .text-right{ text-align: right; }
+        .text-left{ text-align: left; }
+        .title{
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px 0;
+        }
+        .company-name{
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .company-tagline{
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+        .logo{
+            width: 140px;
+        }
+        th{
+            background: #f2f2f2;
+            padding: 10px;
+        }
+        td{
+            padding: 8px;
+        }
+    </style>
 </head>
 <body>
+     <table class="no-border" style="margin-bottom: 10px;">
+        <tr>
+            <td class="no-border">
+                <img src="{{ asset('admin/images/TRINETRlogo.png') }}" class="logo">
+            </td>
+            <td class="no-border text-right">
+                <div class="company-name">VOZEN</div>
+                <div class="company-tagline">Innovation & Excellence</div>
+            </td>
+        </tr>
+    </table>
     <table id="packing_table" style="width: 100%; border-collapse: collapse;" border="1" cellpadding="0" cellspacing="0">
         <tr>
             <th colspan="4"><h3>PACKING SLIP</h3></th>

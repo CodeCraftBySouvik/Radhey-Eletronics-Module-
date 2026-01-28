@@ -72,7 +72,7 @@ class StoreRepository implements StoreInterface
      */
     public function create(array $data)
     {
-      // dd($data);
+    //   dd($data);
         $collection = collect($data);
         $store = new Store;
         $city_id = null;
@@ -168,10 +168,31 @@ class StoreRepository implements StoreInterface
         $slugExistCount = Store::where('slug', $slug)->count();
         if ($slugExistCount > 0) $slug = $slug.'-'.($slugExistCount+1);
         $store->slug = $slug; 
-        $store->created_at = date('Y-m-d H:i:s');       
+        $store->created_at = date('Y-m-d H:i:s');
+        $otp = 1234;
+        $store->otp = $otp;
         $store->save();
 
         return $store;
+    }
+
+    public function verify_otp(int $storeId, string $otp){
+        $store = Store::where('id',$storeId)->where('otp',$otp)->first();
+        if(!$store){
+            return [
+                'status' => false,
+                'message' => 'Invalid Otp'
+            ];
+        }
+
+        $store->otp_verified_at = now();
+        $store->save();
+
+        return [
+            'status' => true,
+            'message' => 'Otp Verified Sucessfully',
+            'store' => $store
+        ];
     }
     /**
      * This method is for store update

@@ -716,7 +716,7 @@ function getInvoiceProducts($invoice_id,$product_id){
 
 function getStoreLedgerAmount($store_id){
     // $data = Invoice::where('store_id',$store_id)->where('payment_status', '!=', 2)->get();
-
+    
     $cred_amount = Ledger::where('store_id',$store_id)->where('user_type','store')->where('is_credit', 1)->sum('transaction_amount');
     $cred_amount = !empty($cred_amount)?$cred_amount:0;
     $deb_amount = Ledger::where('store_id',$store_id)->where('user_type','store')->where('is_debit', 1)->sum('transaction_amount');

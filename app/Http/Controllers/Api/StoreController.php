@@ -88,6 +88,24 @@ class StoreController extends Controller
 
     }
 
+    public function verifyOtp(Request $request){
+        $request->validate([
+           'store_id' => 'required|exists:stores,id',
+           'otp' => 'required'
+        ]);
+
+        $result = $this->storeRepository->verify_otp(
+            $request->store_id,
+            $request->otp
+        );
+
+        if(!$result['status']){
+            return response()->json($result,422);
+        }
+
+        return response()->json($result,200);
+    }
+
     public function noorder(Request $request)
     {
         // $newDetails = $request->only([

@@ -184,6 +184,64 @@ class OrderRepository implements OrderInterface
        return Order::with('users')->with('stores')->where('store_id',$id)->get();
     }
 
+       public function getStoreCreditStatus(int $storeId)
+    {
+        $store = Store::find($storeId);
+        if (!$store) {
+            return ['status' => false, 'message' => 'Invalid store'];
+        }
+
+        $ledgerAmount = getStoreLedgerAmount($storeId);
+        $outstanding = $ledgerAmount['outstanding'];
+
+        if ($outstanding >= 0) {
+            return [
+                'outstanding' => 0,
+                'due_days' => 0
+            ];
+        }
+
+        $total_payment = PaymentCollection::where('store_id', $storeId)
+            ->sum('collection_amount');
+
+        $last_bill_amount = Ledger::where('store_id', $storeId)
+            ->where('is_debit', 1)
+            ->orderBy('entry_date', 'desc')
+            ->first();
+
+        $invoice_date = null;
+        $total = 0;
+
+        if ($last_bill_amount &&
+            $last_bill_amount->transaction_amount == replaceMinusSign($outstanding)) {
+            $invoice_date = $last_bill_amount->entry_date;
+        } else {
+            $bills = Ledger::where('store_id', $storeId)
+                ->where('is_debit', 1)
+                ->orderBy('entry_date')
+                ->get();
+
+            foreach ($bills as $bill) {
+                $total += $bill->transaction_amount;
+                if ($total > $total_payment) {
+                    $invoice_date = $bill->entry_date;
+                    break;
+                }
+            }
+        }
+
+        $due_days = 0;
+        if ($invoice_date) {
+            $due_days = now()->diffInDays($invoice_date);
+        }
+
+        return [
+            'outstanding' => replaceMinusSign($outstanding),
+            'due_days' => $due_days,
+            'invoice_date' => $invoice_date
+        ];
+    }
+
     public function placeOrder(array $data){
         $collectedData = collect($data);
 
@@ -210,6 +268,44 @@ class OrderRepository implements OrderInterface
             foreach($cartData as $cartValue) {
                 $subtotal += $cartValue->price * $cartValue->qty;
             }
+            // ================= CREDIT CHECK START =================
+
+            $storeId = $collectedData['store_id'];
+
+            // get due info (same logic as store due report)
+            $creditInfo = getStoreCreditStatus($storeId);
+            dd($creditInfo['outstanding'] + $subtotal);
+            // fetch store credit config
+            $store = Store::find($storeId);
+
+            // 1️⃣ Credit limit exceeded
+            if (
+                !empty($store->credit_limit) &&
+                ($creditInfo['outstanding'] + $subtotal) > $store->credit_limit
+            ) {
+                DB::rollBack();
+                return [
+                    'error' => true,
+                    'message' => 'Order blocked: Credit limit exceeded'
+                ];
+            }
+
+            // 2️⃣ Due days exceeded & outstanding exists
+            $allowedDays = $store->credit_days ?? 30;
+
+            if (
+                $creditInfo['due_days'] > $allowedDays &&
+                $creditInfo['outstanding'] > 0
+            ) {
+                DB::rollBack();
+                return [
+                    'error' => true,
+                    'message' => 'Order blocked: Payment overdue beyond allowed period'
+                ];
+            }
+
+            // ================= CREDIT CHECK END =================
+
             $newEntry->amount = $subtotal;
             $newEntry->final_amount = $subtotal;
             $newEntry->signature = !empty($collectedData['signature'])?$collectedData['signature']:'';

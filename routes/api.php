@@ -28,6 +28,7 @@ Route::any('products', 'Api\ProductController@list');
 //store section
 Route::get('store', 'Api\StoreController@list');
 Route::post('store/create', 'Api\StoreController@store');
+Route::post('store/verify-otp', 'Api\StoreController@verifyOtp');
 Route::post('store/invoices', 'Api\StoreController@invoices');
 Route::get('task-store-list/{userId}', 'Api\StoreController@taskStoreList');
 Route::post('store/createnote', 'Api\StoreController@createnote');
