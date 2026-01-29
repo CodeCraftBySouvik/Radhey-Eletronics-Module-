@@ -51,8 +51,8 @@
                           
                     </div> 
                     <div class="col-sm-4">
-                        <label for="">Store <span class="text-danger">*</span></label>
-                        <input type="text" name="store_name" class="form-control select-md" id="store_name" placeholder="Search store by name" onkeyup="getStores(this.value);" value="{{ old('store_name') }}" autocomplete="off">
+                        <label for="">Customer <span class="text-danger">*</span></label>
+                        <input type="text" name="store_name" class="form-control select-md" id="store_name" placeholder="Search customer by name" onkeyup="getStores(this.value);" value="{{ old('store_name') }}" autocomplete="off">
                         <input type="hidden" name="store_id" id="store_id" value="{{ old('store_id') }}">
                         <div class="respDropStore" id="respDropStore" style="position: relative;"></div>
                         @error('store_id') <p class="small text-danger">{{ $message }}</p> @enderror

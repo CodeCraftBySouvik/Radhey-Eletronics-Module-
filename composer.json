@@ -8,6 +8,7 @@
         "php": "^8.3",
         "barryvdh/laravel-dompdf": "^2.2",
         "laravel/framework": "^10.0",
+        "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "laravel/ui": "^4.6",
         "maatwebsite/excel": "^3.1",

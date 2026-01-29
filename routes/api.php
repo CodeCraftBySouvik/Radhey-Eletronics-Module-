@@ -19,9 +19,14 @@ use App\Models\Store;
 |
 */
 
-Route::middleware('auth:api')->get('/user', function (Request $request) {
-    return $request->user();
-});
+Route::post('login', 'Api\UserController@login')->withoutMiddleware('throttle:api');
+
+Route::middleware('auth:sanctum','throttle:api')->group(function () {
+   Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+
+
 
 //product section
 Route::any('products', 'Api\ProductController@list');
@@ -40,8 +45,8 @@ Route::post('store-visit/start', 'Api\ActivityController@storeVisitStore');
 Route::post('store-visit/locationupdate', 'Api\ActivityController@updateVisitLocation');
 Route::post('store-visit/end', 'Api\ActivityController@storeVisitEnd');
 //staff auth
-Route::post('get-otp', 'Api\UserController@logincheck');
-Route::post('login-via-otp', 'Api\UserController@otpcheck');
+// Route::post('get-otp', 'Api\UserController@logincheck');
+// Route::post('login-via-otp', 'Api\UserController@otpcheck');
 
 // Location Update
 Route::post('location-update', 'Api\UserController@location_update');
@@ -85,3 +90,5 @@ Route::post('search-user', 'Api\LedgerController@search_user');
 Route::post('ledger-user', 'Api\LedgerController@list');
 Route::get('ledger-csv', 'Api\LedgerController@csv');
 Route::get('ledger-pdf', 'Api\LedgerController@pdf');
+
+});

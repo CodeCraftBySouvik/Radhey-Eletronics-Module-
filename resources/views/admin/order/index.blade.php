@@ -93,7 +93,7 @@
                 <th>#</th>
                 <th>Date & Time</th>
                 <th>Order Id</th>
-                <th>Store Details</th>
+                <th>Customer Details</th>
                 <th>Placed By</th>
                 <th>Products</th>
                 <th>Order Amount (Inc.Tax)</th>

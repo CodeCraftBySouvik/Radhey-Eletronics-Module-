@@ -18,7 +18,7 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.css" />
         <link href="{{ asset('admin/css/style.css') }}" rel="stylesheet">
 
-        <title>Radhey | Admin Dashboard</title>
+        <title>Vozen | Admin Dashboard</title>
     </head>
     <body>
         <div id="app-preloader">
@@ -216,7 +216,7 @@
                                 <a href="{{ route('admin.accounting.add_payment_receipt') }}">Add Payment Receipt</a>
                             </li>
                             <li class="{{ ( request()->is('admin/accounting/list_bad_debt') ) ? 'active' : '' }}">
-                                <a href="{{ route('admin.accounting.list_bad_debt') }}">Store Bad Debt</a>
+                                <a href="{{ route('admin.accounting.list_bad_debt') }}">Customer Bad Debt</a>
                             </li>
                             
                             
@@ -274,7 +274,7 @@
                             <li class="{{ ( request()->is('admin/report/stock-log') ) ? 'active' : '' }}"><a href="{{ route('admin.report.stock-log') }}">Daily Stock Log</a></li>
                             <li class="{{ ( request()->is('admin/report/barcode-history') ) ? 'active' : '' }}"><a href="{{ route('admin.report.barcode-history') }}">Barcode Info </a></li>
                             <li class="{{ ( request()->is('admin/report/cp-sp-report') ? 'active' : '') }}"><a href="{{ route('admin.report.cp-sp-report') }}">CP / SP Report</a></li>
-                            <li class="{{ ( request()->is('admin/report/store-due-payment') ) ? 'active' : '' }}"><a href="{{ route('admin.report.store-due-payment') }}">Store Due Payments</a></li>
+                            <li class="{{ ( request()->is('admin/report/store-due-payment') ) ? 'active' : '' }}"><a href="{{ route('admin.report.store-due-payment') }}">Customer Due Payments</a></li>
                             <li class="{{ ( request()->is('admin/attendance/view') ) ? 'active' : '' }}"><a href="{{ route('admin.attendance.view') }}">Salesman Locations</a></li>
                             <li class=""><a href="{{ route('admin.report.travel-report') }}">Travel Report</a></li>
                             <li class="@if(request()->is('admin/report/store-notes')) {{'active'}} @endif"><a href="{{ route('admin.report.store-notes') }}">Sales Notes</a></li>
@@ -350,7 +350,7 @@
             @yield('content')
             <footer>
                 <div class="row">
-                    <div class="col-12 text-end">{{ config('app.name') }} 2021-{{date('Y')}}</div>
+                    <div class="col-12 text-end">VOZEN 2026-{{date('Y')}}</div>
                 </div>
             </footer>
         </main>

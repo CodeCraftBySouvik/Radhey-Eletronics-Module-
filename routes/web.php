@@ -344,7 +344,7 @@ Route::prefix('admin')->name('admin.')->group(function() {
             Route::post('/save_partner_expense', 'Admin\AccountingController@save_partner_expense')->name('save_partner_expense');
             Route::get('/edit_payment_receipt/{voucher_no}/{ledger_url?}', 'Admin\AccountingController@edit_payment_receipt')->name('edit_payment_receipt');
             Route::post('/update_payment_receipt', 'Admin\AccountingController@update_payment_receipt')->name('update_payment_receipt');
-
+            
             Route::get('/list_expenses', 'Admin\AccountingController@list_expenses')->name('list_expenses');
             Route::get('/csv_export_expenses', 'Admin\AccountingController@csv_export_expenses')->name('csv_export_expenses');
             Route::get('/edit_expense/{id}', 'Admin\AccountingController@edit_expense')->name('edit_expense');
