@@ -1723,719 +1723,201 @@ class AccountingController extends Controller
     }
 
 
-
-
-
-
-
     public function save_expenses(Request $request)
-
-
-
-    {        
-
-
-
+    { 
         $store_id = !empty($request->store_id)?$request->store_id:'';
-
-
-
         $staff_id = !empty($request->staff_id)?$request->staff_id:'';
-
-
-
         $admin_id = !empty($request->admin_id)?$request->admin_id:'';
-
-
-
         $supplier_id = !empty($request->supplier_id)?$request->supplier_id:'';
-
-
-
         $user_type = !empty($request->user_type)?$request->user_type:'';
-
-
-
         $expense_id = !empty($request->expense_id)?$request->expense_id:'';
 
-
-
-
-
-
-
         if($user_type != 'miscellaneous'){
-
-
-
             $request->validate([
-
-
-
                 'payment_date' => 'required', 
-
-
-
                 'payment_mode' => 'required', 
-
-
-
                 'amount' => 'required', 
-
-
-
                 'user_type' => 'required',
-
-
-
                 'user_id' => 'required',
-
-
-
                 'user_name' => 'required',
-
-
-
                 'expense_id' => 'required'
-
-
-
             ],[
 
-
-
                 'payment_date.required' => "Please add date of payment",
-
-
-
                 'payment_mode' => "Please mention mode of payment",
-
-
-
                 'amount.required' => "Please add amount",
-
-
-
                 'user_type.required' => "Please mention expense at",
-
-
-
                 'user_id.required' => "Please specify which user",
-
-
-
                 'expense_id.required' => "Please add expense type"
-
-
-
             ]);
-
-
-
         }else{
-
-
-
             $request->validate([
-
-
-
                 'payment_date' => 'required', 
-
-
-
                 'payment_mode' => 'required', 
-
-
-
                 'amount' => 'required', 
-
-
-
                 'user_type' => 'required'                
-
-
-
             ],[
-
-
-
                 'payment_date.required' => "Please add date of payment",
-
-
-
                 'payment_mode' => "Please mention mode of payment",
-
-
-
                 'amount.required' => "Please add amount",
-
-
-
                 'user_type.required' => "Please mention expense at",                
-
-
-
             ]);
-
-
-
         }
 
-
-
-
-
-
-
         $paymentData = array(            
-
-
-
             'payment_for' => 'debit',
-
-
-
             'voucher_no' => $request->voucher_no,
-
-
-
             'payment_date' => $request->payment_date,
-
-
-
             'payment_mode' => $request->payment_mode,
-
-
-
             'payment_in' => ($request->payment_mode != 'cash') ? 'bank' : 'cash' ,
-
-
-
             'bank_cash' => ($request->payment_mode == 'cash') ? 'cash' : 'bank', 
-
-
-
             'amount' => $request->amount,
-
-
-
             'bank_name' => $request->bank_name,
-
-
-
             'chq_utr_no' => $request->chq_utr_no,
-
-
-
             'narration' => $request->narration,
-
-
-
             'created_by' => Auth::user()->id
-
-
-
         );        
-
-
-
-
-
-
 
         if($user_type == 'miscellaneous'){
 
-
-
-
-
-
-
         } else {
-
-
-
             if($user_type == 'staff'){
-
-
-
                 $paymentStaff = array('staff_id' => $staff_id);
-
-
-
                 $paymentData = array_merge($paymentData,$paymentStaff);
-
-
-
             } else if ($user_type == 'store'){
-
-
-
                 $paymentStore = array('store_id' => $store_id);
-
-
-
                 $paymentData = array_merge($paymentData,$paymentStore);
-
-
-
             } else if ($user_type == 'partner'){
-
-
-
                 $paymentAdmin = array('admin_id' => $admin_id);
-
-
-
                 $paymentData = array_merge($paymentData,$paymentAdmin);
-
-
-
             } else if ($user_type == 'supplier'){
-
-
-
                 $paymentSupplier = array('supplier_id' => $supplier_id);
-
-
-
                 $paymentData = array_merge($paymentData,$paymentSupplier);
-
-
-
             }
-
-
-
         }        
 
-
-
         if(!empty($expense_id)){
-
-
-
             $paymentExpense = array('expense_id' => $expense_id);
-
-
-
             $paymentData = array_merge($paymentData,$paymentExpense);
-
-
-
         }
-
-
 
         $payment_id = Payment::insertGetId($paymentData);        
 
-
-
-
-
-
-
-
-
-
-
-        
-
-
-
-
-
-
-
         $is_credit = 0; 
-
-
 
         $is_debit = 1;
 
-
-
         /* Add expense in purpose */
-
-
-
         $expense_name = "";
-
-
 
         if(!empty($expense_id)){
 
-
-
             $expense_name = !empty($request->expense_name)?$request->expense_name:'';
 
-
-
         }
-
-
 
         $purpose_description = "expense for ".$user_type.". ".$expense_name;
 
-
-
-
-
-
-
         /* Add Contra Entry As Credit For Staff */
-
-
-
-
-
-
-
-        
-
-
-
-
-
-
 
         if($user_type == 'staff' && !empty($staff_id)){
 
-
-
             $checkExpense = DB::table('expense')->find($expense_id);
-
-
 
             if(!empty($checkExpense)){
 
-
-
                 if(!empty($checkExpense->for_credit)){
-
-
 
                     $staffCredLedgerArr = array(
 
-
-
                         'user_type' => $user_type,
-
-
-
                         'staff_id' => $staff_id,
-
-
-
                         'transaction_id' => 'STAFFEXPENSE'.time(),
-
-
-
                         'transaction_amount' => $request->amount,
-
-
-
                         'payment_id' => $payment_id,
-
-
-
                         'bank_cash' => ($request->payment_mode == 'cash') ? 'cash' : 'bank', 
-
-
-
                         'is_credit' => 1,
-
-
-
                         'entry_date' => $request->payment_date,
-
-
-
                         'purpose' => 'staff_expense',
-
-
-
                         'purpose_description' => "Contra Entry For ".$expense_name.""
-
-
-
                     );
-
-
-
                     Ledger::insert($staffCredLedgerArr);
-
-
-
                 }
-
-
-
             }
-
-
-
-            
-
-
-
         }
 
-
-
-
-
-
-
         /* End Contra Entry As Credit For Staff  */
-
-
-
-
-
-
-
         /* ====================== */
-
-
-
         if($user_type != 'miscellaneous'){
-
-
 
             $ledgerData = array(
 
-
-
                 'user_type' => $user_type,
-
-
-
                 'transaction_id' => $request->voucher_no,
-
-
-
                 'transaction_amount' => $request->amount,
-
-
-
                 'payment_id' => $payment_id,
-
-
-
                 'bank_cash' => ($request->payment_mode == 'cash') ? 'cash' : 'bank', 
-
-
-
                 'is_credit' => $is_credit,
-
-
-
                 'is_debit' => $is_debit,
-
-
-
                 'entry_date' => $request->payment_date,
-
-
-
                 'purpose' => 'expense',
-
-
-
                 'purpose_description' => $purpose_description
-
-
-
             );
 
-
-
             if($user_type == 'staff'){
-
-
-
                 $ledgerStaff = array('staff_id' => $staff_id);
-
-
-
                 $ledgerData = array_merge($ledgerData,$ledgerStaff);
-
-
-
             } else if ($user_type == 'store'){
-
-
-
                 $ledgerStore = array('store_id' => $store_id);
-
-
-
                 $ledgerData = array_merge($ledgerData,$ledgerStore);
-
-
-
             } else if ($user_type == 'partner'){
-
-
-
                 $ledgerAdmin = array('admin_id' => $admin_id);
-
-
-
                 $ledgerData = array_merge($ledgerData,$ledgerAdmin);
-
-
-
             } else if ($user_type == 'supplier'){
-
-
-
                 $ledgerSupplier = array('supplier_id' => $supplier_id);
-
-
-
                 $ledgerData = array_merge($ledgerData,$ledgerSupplier);
-
-
-
             }
 
-
-
             // dd($ledgerData);            
-
-
-
             Ledger::insert($ledgerData);
-
-
-
         }        
-
-
 
         /* Entry in journal */
-
-
-
         Journal::insert([
-
-
-
             'transaction_amount' => $request->amount,
-
-
-
             'is_credit' => $is_credit,
-
-
-
             'is_debit' => $is_debit,
-
-
-
             'entry_date' => $request->payment_date,
-
-
-
             'payment_id' => $payment_id,
-
-
-
             'bank_cash' => ($request->payment_mode == 'cash') ? 'cash' : 'bank', 
-
-
-
             'purpose' => 'expense',
-
-
-
             'purpose_description' =>  $purpose_description ,
-
-
-
             'purpose_id' => $request->voucher_no
-
-
-
         ]);
 
-
-
         /* for partner withdrawl */
-
-
-
         $withdrawls_id = !empty($request->withdrawls_id)?$request->withdrawls_id:'';
 
-
-
         if(!empty($withdrawls_id)){
-
-
-
             DB::table('withdrawls')->where('id',$withdrawls_id)->update(['is_disbursed' => 1]);
-
-
-
         }        
 
-
-
         if(!empty($withdrawls_id)){
-
-
-
             $successMsg = "Withdrawl disbursed for partner successfully";
 
-
-
             Session::flash('message', $successMsg); 
-
-
-
             return redirect()->route('admin.revenue.withdrawls');
-
-
-
         } else {
-
-
 
             $successMsg = "Expense added successfully for ".$user_type."";
 
-
-
             Session::flash('message', $successMsg); 
 
-
-
             return redirect()->route('admin.accounting.add_expenses');
-
-
-
         }
-
-
-
     }
 
-
-
     ## Add Depot Expense End ##
-
-
-
-
-
-
-
-    
-
-
-
     ## Add Partner Expense Start ##
 
 

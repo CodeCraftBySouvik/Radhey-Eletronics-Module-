@@ -10,6 +10,9 @@ class Ledger extends Model
     //
 
     protected $table = "ledger";
+    protected $fillable = [
+        'user_type', 'staff_id', 'store_id', 'supplier_id', 'admin_id', 'payment_id', 'staff_commision_id', 'collection_staff_commission_id', 'store_bad_debt_id', 'transaction_id', 'transaction_amount', 'is_credit', 'is_debit', 'bank_cash', 'entry_date', 'purpose', 'purpose_description', 'is_gst', 'start_date', 'whatsapp_status', 'last_whatsapp', 'created_at', 'updated_at'
+    ];
     
     public function store(): BelongsTo
     {

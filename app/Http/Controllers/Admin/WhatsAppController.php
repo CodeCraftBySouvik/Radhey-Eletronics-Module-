@@ -90,7 +90,7 @@ class WhatsAppController extends Controller
         $upload_path = "public/uploads/tally-bill/";
         $tally_file = $request->tally_file;     
         $bussiness_name = Str::slug($request->bussiness_name, '-');
-	   $WhatsAppInvoice = WhatsAppInvoice::findOrFail($request->id);
+	    $WhatsAppInvoice = WhatsAppInvoice::findOrFail($request->id);
         $TallyName = 'Tally-bill-'.$bussiness_name."-".$WhatsAppInvoice->id.".".$tally_file->getClientOriginalExtension();
         $tally_file->move($upload_path, $TallyName);
         $uploadedTally = $TallyName;

@@ -10,6 +10,15 @@ use App\Models\Order;
 class Packingslip extends Model
 {
     protected $table = "packing_slip";
+    protected $fillable = [
+         'id', 
+         'packingslip_id', 
+         'order_id', 
+         'product_id', 
+         'slip_no', 
+         'quantity', 
+         'pcs'
+    ];
 
     /**
      * Get the product that owns the Packingslip

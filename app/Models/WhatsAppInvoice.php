@@ -10,6 +10,9 @@ class WhatsAppInvoice extends Model
 {
     //
     protected $table = "whatsapp_invoices";
+    protected $fillable = [
+       'invoice_id', 'order_id', 'store_id', 'user_id', 'packingslip_id', 'invoice_no', 'net_price', 'required_payment_amount', 'payment_status', 'is_paid', 'store_address_outstation', 'trn_file', 'is_gst', 'tally_bill_file', 'tb_required', 'transport_lr_file', 'lr_required', 'status', 'last_whatsapp', 'created_by', 'created_at', 'updated_by', 'updated_at'
+    ];
 
     /**
      * Get the order that owns the Invoice

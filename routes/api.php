@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\SubCategoryController;
 use App\Http\Controllers\Api\CollectionController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\InvoiceApiController;
 use App\Models\Store;
 
 /*
@@ -70,6 +71,8 @@ Route::post('order/list', 'Api\OrderController@list');
 // payment collection
 Route::post('payment-collection/add','Api\PaymentCollectionController@store');
 Route::post('payment-collection/list-by-store', 'Api\PaymentCollectionController@listByStore');
+// Expense
+Route::post('expenses/save','Api\PaymentCollectionController@saveExpenses');
 // scan
 Route::post('scan/box', 'Api\ScanController@box');
 Route::post('scan/stockout', 'Api\ScanController@stockout');
@@ -90,5 +93,8 @@ Route::post('search-user', 'Api\LedgerController@search_user');
 Route::post('ledger-user', 'Api\LedgerController@list');
 Route::get('ledger-csv', 'Api\LedgerController@csv');
 Route::get('ledger-pdf', 'Api\LedgerController@pdf');
+
+// Invoice generate by this Api
+Route::post('deliver-now/{packingslip_id}', 'Api\InvoiceApiController@deliverNow');
 
 });

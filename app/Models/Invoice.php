@@ -10,6 +10,9 @@ class Invoice extends Model
 {
     //
     protected $table = "invoice";
+    protected $fillable = [
+        'order_id', 'store_id', 'user_id', 'packingslip_id', 'invoice_no', 'net_price', 'required_payment_amount', 'payment_status', 'is_paid', 'store_address_outstation', 'trn_file', 'is_gst', 'created_by', 'created_at', 'updated_by', 'updated_at'
+    ];
 
     /**
      * Get the order that owns the Invoice

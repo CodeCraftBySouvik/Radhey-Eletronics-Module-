@@ -702,13 +702,6 @@ class PackingslipController extends Controller
     public function raise_invoice_form($id)
 
     {
-
-        # $id = packingslip_id
-
-        # check invoice raised for PS
-
-
-
         $packingslips = PackingslipNew1::find($id);        
 
         if(!empty($packingslips->invoice_id)){
@@ -716,37 +709,9 @@ class PackingslipController extends Controller
             Session::flash('message', "Invoice raised already for this packing slip");
 
             return redirect()->route('admin.packingslip.index');
-
         }        
 
         $packing_slip = Packingslip::where('packingslip_id',$id)->get();
-
-        // dd($packing_slip);
-
-
-
-        // $data = DB::table('packing_slip AS ps')
-
-        // ->select('ps.*','p.name AS pro_name','p.igst','p.cgst','p.sgst','p.hsn_code','o.order_no','o.user_id','o.created_at AS ordered_at','s.store_name','s.bussiness_name','s.whatsapp AS store_whatsapp','s.email AS store_email','s.contact AS store_contact','s.address_outstation','s.billing_address AS store_billing_address','s.billing_landmark AS store_billing_landmark','s.billing_state AS store_billing_state','s.billing_city AS store_billing_city','s.billing_pin AS store_billing_pin','s.shipping_address AS store_shipping_address','s.shipping_landmark AS store_shipping_landmark','s.shipping_state AS store_shipping_state','s.shipping_city AS store_shipping_city','s.shipping_pin AS store_shipping_pin','o.store_id','o.is_gst')
-
-        // ->leftJoin('orders AS o','o.id','ps.order_id')
-
-        // ->leftJoin('products AS p','p.id','ps.product_id')
-
-        // ->leftJoin('stores AS s','s.id','o.store_id')             
-
-        // ->where('ps.slip_no',$slip_no)->get();
-
-
-
-        // dd($data);
-
-        // return view('admin.packingslip.raise-invoice', compact('data'));
-
-
-
-       
-
         return view('admin.packingslip.raise-invoice', compact('id','packingslips','packing_slip'));
 
     }

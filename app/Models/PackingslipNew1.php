@@ -8,9 +8,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PackingslipNew1 extends Model
 {
-    //
-
     protected $table = 'packingslips';
+    protected $fillable = [
+         'order_id', 
+         'store_id', 
+         'invoice_id', 
+         'slipno', 
+         'is_disbursed', 
+         'created_by', 
+         'created_at', 
+         'updated_by', 
+         'updated_at', 
+         'disbursed_by', 
+         'disbursed_at'
+    ];
 
     /**
      * Get the store that owns the PackingslipNew1

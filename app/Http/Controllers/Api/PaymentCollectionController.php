@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Validator;
 
 use App\Interfaces\PaymentCollectionInterface;
 use App\Models\PaymentCollection;
+use App\Models\Payment;
+use App\Models\Ledger;
+use App\Models\Journal;
 use Illuminate\Support\Facades\DB;
 
 class PaymentCollectionController extends Controller
@@ -173,6 +176,208 @@ class PaymentCollectionController extends Controller
                     'data' => $validator->errors()->first()
                 ],400
             );
+        }
+
+    }
+
+    public function saveExpenses(Request $request){
+        $store_id    = $request->store_id ?? '';
+        $staff_id    = $request->staff_id ?? '';
+        $admin_id    = $request->admin_id ?? '';
+        $supplier_id = $request->supplier_id ?? '';
+        $user_type   = $request->user_type ?? '';
+        $expense_id  = $request->expense_id ?? '';
+        $expense_proof  = $request->expense_proof ?? '';
+
+        /* ================= VALIDATION ================= */
+
+         if ($user_type != 'miscellaneous') {
+            $validator = Validator::make($request->all(), [
+                'payment_date' => 'required',
+                'payment_mode' => 'required',
+                'amount'       => 'required|numeric',
+                'user_type'    => 'required',
+                'user_id'      => 'required',
+                'user_name'    => 'required',
+                'expense_id'   => 'required',
+                'expense_proof' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048'
+            ]);
+        } else {
+            $validator = Validator::make($request->all(), [
+                'payment_date' => 'required',
+                'payment_mode' => 'required',
+                'amount'       => 'required|numeric',
+                'user_type'    => 'required',
+                'expense_proof' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048'
+            ]);
+        }
+
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+         DB::beginTransaction();
+
+         try{
+
+            $upload_path = public_path('uploads/expense-proof');
+            $expense_proof_name = null;
+
+            if ($request->hasFile('expense_proof')) {
+                $file = $request->file('expense_proof');
+
+                // get original extension
+                $extension = $file->getClientOriginalExtension();
+
+                // create unique file name
+                $expense_proof_name = 'expense_' . time() . '.' . $extension;
+
+                // move file
+                $file->move($upload_path, $expense_proof_name);
+            }
+
+             /* ================= PAYMENT INSERT ================= */
+              $paymentData = [
+                'payment_for'  => 'debit',
+                'voucher_no'   => $request->voucher_no,
+                'payment_date' => $request->payment_date,
+                'payment_mode' => $request->payment_mode,
+                'payment_in'   => ($request->payment_mode != 'cash') ? 'bank' : 'cash',
+                'bank_cash'    => ($request->payment_mode == 'cash') ? 'cash' : 'bank',
+                'amount'       => $request->amount,
+                'bank_name'    => $request->bank_name,
+                'chq_utr_no'   => $request->chq_utr_no,
+                'narration'    => $request->narration,
+                'expense_proof' =>  $expense_proof_name,
+                'created_by'   => auth()->id()
+            ];
+
+             if ($user_type == 'staff') {
+               $paymentData['staff_id'] = $staff_id;
+            } elseif ($user_type == 'store') {
+                $paymentData['store_id'] = $store_id;
+            } elseif ($user_type == 'partner') {
+                $paymentData['admin_id'] = $admin_id;
+            } elseif ($user_type == 'supplier') {
+                $paymentData['supplier_id'] = $supplier_id;
+            }
+
+            if (!empty($expense_id)) {
+                $paymentData['expense_id'] = $expense_id;
+            }
+
+            $payment_id = Payment::insertGetId($paymentData);
+
+             $is_credit = 0;
+             $is_debit  = 1;
+
+              /* ================= PURPOSE ================= */
+
+            $expense_name = $request->expense_name ?? '';
+            $purpose_description = "expense for ".$user_type.". ".$expense_name;
+
+             /* ================= STAFF CONTRA ENTRY ================= */
+
+            if ($user_type == 'staff' && !empty($staff_id)) {
+
+                $checkExpense = DB::table('expense')->find($expense_id);
+
+                if (!empty($checkExpense) && !empty($checkExpense->for_credit)) {
+
+                    Ledger::insert([
+                        'user_type'           => $user_type,
+                        'staff_id'            => $staff_id,
+                        'transaction_id'      => 'STAFFEXPENSE'.time(),
+                        'transaction_amount'  => $request->amount,
+                        'payment_id'          => $payment_id,
+                        'bank_cash'           => ($request->payment_mode == 'cash') ? 'cash' : 'bank',
+                        'is_credit'           => 1,
+                        'entry_date'          => $request->payment_date,
+                        'purpose'             => 'staff_expense',
+                        'purpose_description' => "Contra Entry For ".$expense_name
+                    ]);
+                }
+            }
+
+             /* ================= MAIN LEDGER ENTRY ================= */
+
+            if ($user_type != 'miscellaneous') {
+
+                $ledgerData = [
+                    'user_type'           => $user_type,
+                    'transaction_id'      => $request->voucher_no,
+                    'transaction_amount'  => $request->amount,
+                    'payment_id'          => $payment_id,
+                    'bank_cash'           => ($request->payment_mode == 'cash') ? 'cash' : 'bank',
+                    'is_credit'           => $is_credit,
+                    'is_debit'            => $is_debit,
+                    'entry_date'          => $request->payment_date,
+                    'purpose'             => 'expense',
+                    'purpose_description' => $purpose_description
+                ];
+
+                if ($user_type == 'staff') {
+                    $ledgerData['staff_id'] = $staff_id;
+                } elseif ($user_type == 'store') {
+                    $ledgerData['store_id'] = $store_id;
+                } elseif ($user_type == 'partner') {
+                    $ledgerData['admin_id'] = $admin_id;
+                } elseif ($user_type == 'supplier') {
+                    $ledgerData['supplier_id'] = $supplier_id;
+                }
+
+                Ledger::insert($ledgerData);
+            }
+
+            /* ================= JOURNAL ENTRY ================= */
+
+            Journal::insert([
+                'transaction_amount'  => $request->amount,
+                'is_credit'           => $is_credit,
+                'is_debit'            => $is_debit,
+                'entry_date'          => $request->payment_date,
+                'payment_id'          => $payment_id,
+                'bank_cash'           => ($request->payment_mode == 'cash') ? 'cash' : 'bank',
+                'purpose'             => 'expense',
+                'purpose_description' => $purpose_description,
+                'purpose_id'          => $request->voucher_no
+            ]);
+
+
+             /* ================= WITHDRAWAL UPDATE ================= */
+
+            if (!empty($request->withdrawls_id)) {
+                DB::table('withdrawls')
+                    ->where('id', $request->withdrawls_id)
+                    ->update(['is_disbursed' => 1]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'     => true,
+                'message'    => !empty($request->withdrawls_id)
+                    ? 'Withdrawal disbursed successfully'
+                    : 'Expense added successfully',
+                'payment_id' => $payment_id
+            ]);
+
+
+
+
+         }catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Something went wrong',
+                'error'   => $e->getMessage()
+            ], 500);
         }
 
     }

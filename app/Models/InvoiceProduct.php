@@ -11,6 +11,9 @@ class InvoiceProduct extends Model
 {
     //
     protected $table = "invoice_products";
+    protected $fillable = [
+        'invoice_id', 'product_id', 'product_name', 'quantity', 'pcs', 'price', 'single_product_price', 'count_price', 'total_price', 'is_store_address_outstation', 'hsn_code', 'igst', 'cgst', 'sgst', 'created_at', 'updated_at'
+    ];
 
     /**
      * Get the invoice that owns the InvoiceProduct

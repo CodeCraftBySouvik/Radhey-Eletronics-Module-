@@ -374,35 +374,7 @@
             </div>
 
             @if($packingslips->store->address_outstation)     
-            {{-- <div class="row">
-                <div class="col-sm-4">
-                    <div class="card shadow-sm">
-                        <div class="card-header">
-                            Upload TRN (Store Address Outstation)
-                            <span class="text-danger">*</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="w-100 product__thumb">
-                            <label for="thumbnail"><img id="output" src="{{ asset('admin/images/placeholder-image.jpg') }}"/></label>
-                            @error('trn_file') <p class="small text-danger">{{ $message }}</p> @enderror
-                            </div>
-                            <input type="hidden" name="is_trn_file_uploaded" value="0" id="is_trn_file_uploaded">
-                            <input type="file" id="thumbnail" accept="image/*" name="trn_file" onchange="loadFile(event)" class="d-none" >
-                            <script>
-                            var loadFile = function(event) {
-                                var output = document.getElementById('output');
-                                output.src = URL.createObjectURL(event.target.files[0]);
-                                output.onload = function() {
-                                    URL.revokeObjectURL(output.src) // free memory
-                                }
-        
-                                $('#is_trn_file_uploaded').val(1);
-                            };
-                            </script>
-                        </div>
-                    </div>     
-                </div>
-            </div>        --}}
+         
               
             @endif
             <input type="hidden" name="net_price" value="{{$net_price}}">
