@@ -435,6 +435,8 @@ Route::prefix('admin')->name('admin.')->group(function() {
         
         // report
         Route::prefix('report')->name('report.')->group(function(){
+            Route::get('/attendance-report', 'Admin\ReportController@attendance_report')->name('attendance-report');
+
             Route::get('/cp-sp-report', 'Admin\ReportController@cp_sp_report')->name('cp-sp-report');
             Route::get('/cp-sp-csv', 'Admin\ReportController@cp_sp_csv')->name('cp-sp-csv');
             Route::get('/store-due-payment', 'Admin\ReportController@store_due_payment')->name('store-due-payment');

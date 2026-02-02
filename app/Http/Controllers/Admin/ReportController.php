@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Session;
 use Barryvdh\DomPDF\Facade\Pdf;
 use DateTime;
 use App\User;
+use App\UserAttendance;
 use App\Models\PaymentCollection;
 use App\Models\CollectionStaffCommission;
 use App\Models\Ledger;
@@ -47,6 +48,8 @@ use App\Exports\UserLedgerExport;
 use App\Exports\StockLedgerExport;
 use App\Exports\SalesAnalysisExport;
 use App\Exports\PaymentCollectionReportExport;
+use Carbon\Carbon;
+
 
 class ReportController extends Controller
 {
@@ -2692,6 +2695,65 @@ class ReportController extends Controller
 
 
     }
+
+
+
+   public function attendance_report(Request $request)
+{
+    $month = $request->month ?? now()->month;
+    $year  = $request->year ?? now()->year;
+
+    $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+
+    // Fetch all employees
+    $users = User::where('type', 2)->get();
+
+    // Preload all attendances for the month once
+    $attendances = UserAttendance::whereMonth('start_date', $month)
+        ->whereYear('start_date', $year)
+        ->get()
+        ->groupBy([
+            'user_id',
+            fn ($item) => Carbon::parse($item->start_date)->day
+        ]);
+
+    $attendanceSheet = [];
+
+    foreach ($users as $user) {
+        $dailyStatus = [];
+
+        for ($day = 1; $day <= $daysInMonth; $day++) {
+            $date = Carbon::create($year, $month, $day)->toDateString();
+
+            if (isset($attendances[$user->id][$day][0])) {
+                // If attendance exists → Present
+                $status = 'P';
+            } elseif (Carbon::parse($date)->isWeekend()) {
+                $status = 'W';
+            } else {
+                // No attendance → Absent
+                $status = 'A';
+            }
+
+            $dailyStatus[$day] = $status;
+        }
+
+        $attendanceSheet[] = [
+            'user' => $user,
+            'attendance' => $dailyStatus
+        ];
+    }
+    // dd($attendanceSheet);
+
+    return view('admin.employee_attendance.index', compact(
+        'attendanceSheet',
+        'month',
+        'year',
+        'daysInMonth'
+    ));
+}
+
+
 
 
 }

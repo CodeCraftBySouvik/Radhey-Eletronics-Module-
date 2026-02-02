@@ -6,8 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserAttendance extends Model
 {
+    protected $table = "user_attendances";
     protected $fillable = [
-        'user_id','date', 'location','lat','lng','start_time','end_time'
+        'user_id','status','date', 'location','lat','lng','start_time','end_time'
     ];
 
     public function users() {

@@ -121,6 +121,14 @@ class UserController extends Controller
         if ($attendance) {
             $attendance_id = $attendance->id;
 
+            if ($attendance->status !== 'Leave') {
+                DB::table('user_attendances')
+                    ->where('id', $attendance_id)
+                    ->update([
+                        'status' => 'Present',
+                        'updated_at' => now()
+                    ]);
+            }
             // Get last location
             $last_location = DB::table('attendance_locations')
                 ->where('attendance_id', $attendance_id)
@@ -169,6 +177,7 @@ class UserController extends Controller
             // No attendance today, create one
             $attendance_id = DB::table('user_attendances')->insertGetId([
                 'user_id' => $user->id,
+                'status' => 'Present',
                 'mac_id' => $request->mac_id,
                 'start_date' => date('Y-m-d'),
                 'start_time' => date('H:i'),
