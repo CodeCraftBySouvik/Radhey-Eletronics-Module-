@@ -2732,7 +2732,7 @@ class ReportController extends Controller
                 $status = 'W';
             } else {
                 // No attendance → Absent
-                $status = 'A';
+                $status = '-';
             }
 
             $dailyStatus[$day] = $status;
