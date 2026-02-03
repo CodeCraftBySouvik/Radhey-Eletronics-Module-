@@ -56,37 +56,90 @@ class ExpenseController extends Controller
 
     /* List Expense */
 
-    public function list($admin_id=0)
-    {
-        # expense list...        
+    // public function list($admin_id=0)
+    // {
+    //     # expense list...        
 
-        if(!empty($admin_id)){
-            if(in_array($admin_id,[1,2])){
-                $data = Payment::select('*')
-                // ->select('id','admin_id','expense_id','payment_for','bank_cash','voucher_no','payment_date','amount','chq_utr_no','bank_name','narration','created_from')
-                ->with('expense:id,title')
-                ->where('admin_id',$admin_id)
-                ->where('payment_for','credit')
-                ->whereNotNull('expense_id')
-                ->orderBy('payment_date','desc')
-                ->orderBy('id','desc')->get();
-                
-                $count_data = Payment::where('admin_id',$admin_id)
-                ->where('payment_for','credit')
-                ->whereNotNull('expense_id')->count();
+    //     if(!empty($admin_id)){
+    //         if(in_array($admin_id,[1,2])){
+    //             $data = Payment::select('*')
+    //             // ->select('id','admin_id','expense_id','payment_for','bank_cash','voucher_no','payment_date','amount','chq_utr_no','bank_name','narration','created_from')
+    //             ->with('expense:id,title')
+    //             ->where('admin_id',$admin_id)
+    //             ->where('payment_for','credit')
+    //             ->whereNotNull('expense_id')
+    //             ->orderBy('payment_date','desc')
+    //             ->orderBy('id','desc')->get();
+    //             dd($data);
+    //             $count_data = Payment::where('admin_id',$admin_id)
+    //             ->where('payment_for','credit')
+    //             ->whereNotNull('expense_id')->count();
 
-                // echo '<pre>'; print_r($data);
-                return response()->json(['error' => false, 'message' => 'Expense List', 'data' => array('count_data'=>$count_data,'expenses'=>$data) ], 200);
-            } else {
-                return response()->json(['error' => true, 'message' => 'You have no authorization for accessing expense list', 'data' => array() ], 200);
-            }
+    //             // echo '<pre>'; print_r($data);
+    //             return response()->json(['error' => false, 'message' => 'Expense List', 'data' => array('count_data'=>$count_data,'expenses'=>$data) ], 200);
+    //         } else {
+    //             return response()->json(['error' => true, 'message' => 'You have no authorization for accessing expense list', 'data' => array() ], 200);
+    //         }
             
-        } else {
-            return response()->json(['error' => true, 'message' => 'Please mention admin_id', 'data' => array() ], 200);
-        }
+    //     } else {
+    //         return response()->json(['error' => true, 'message' => 'Please mention admin_id', 'data' => array() ], 200);
+    //     }
 
         
+    // }
+
+    // List Expense 
+       public function list($user_id = 0)
+{
+    if(empty($user_id)){
+        return response()->json([
+            'error' => true,
+            'message' => 'Please mention user_id',
+            'data' => []
+        ], 200);
     }
+
+    $user = User::find($user_id);
+    if(!$user){
+        return response()->json([
+            'error' => true,
+            'message' => 'User not found',
+            'data' => []
+        ], 200);
+    }
+
+    if($user->type == 1){ 
+        // Admin: can see its own credit + all staff debit payments
+        $expenses = Payment::with('expense:id,title')
+            ->whereNotNull('expense_id')
+            ->where(function($q) use ($user_id) {
+                $q->where('payment_for', 'credit')          // admin's own credit
+                  ->where('admin_id', $user_id)             // make sure it's admin's
+                  ->orWhere('payment_for', 'debit');       // all staff debit
+            })
+            ->orderBy('payment_date','desc')
+            ->orderBy('id','desc')
+            ->get();
+    } else { 
+        // Staff: only their own debit payments
+        $expenses = Payment::with('expense:id,title')
+            ->whereNotNull('expense_id')
+            ->where('payment_for', 'debit')
+            ->where('staff_id', $user_id)
+            ->orderBy('payment_date','desc')
+            ->orderBy('id','desc')
+            ->get();
+    }
+
+    return response()->json([
+        'error' => false,
+        'message' => 'Expense List',
+        'data' => [
+            'count_data' => $expenses->count(),
+            'expenses' => $expenses
+        ]
+    ], 200);
+}
 
     /* Add Expense */
 
@@ -181,6 +234,17 @@ class ExpenseController extends Controller
 
     public function add_depot_expense(Request $request)
     {
+        $user = auth()->user();
+
+        // If logged-in user is staff
+        if ($user->type == 2) { // 2 = staff
+            $request->merge([
+                'user_type' => 'staff',
+                'user_id' => $user->id,
+                'admin_id' => $user->id, // admin_id set as staff ID
+                'payment_date' => $request->payment_date ?? date('Y-m-d')
+            ]);
+        }
         # add depot expense...
         $validator = Validator::make($request->all(), [
             'admin_id' => ['required', 'exists:users,id'],
@@ -191,7 +255,8 @@ class ExpenseController extends Controller
             'payment_mode' => ['required', 'field' => 'in:cheque,neft,cash'],
             'chq_utr_no' => ['required_if:payment_mode,cheque,neft'],
             'bank_name' => ['required_if:payment_mode,cheque,neft'],
-            'expense_id' => ['required_if:user_type,staff,store,supplier', 'exists:expense,id']
+            'expense_id' => ['required_if:user_type,staff,store,supplier', 'exists:expense,id'],
+            'expense_proof' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048'
         ]);
 
         if(!$validator->fails()){
@@ -201,6 +266,21 @@ class ExpenseController extends Controller
             $expense_name = '';
             if(!empty($params['expense_id'])){
                 $expense_name = getSingleAttributeTable('expense',$params['expense_id'],'title');
+            }
+             $upload_path = public_path('uploads/expense-proof');
+            $expense_proof_name = null;
+
+            if ($request->hasFile('expense_proof')) {
+                $file = $request->file('expense_proof');
+
+                // get original extension
+                $extension = $file->getClientOriginalExtension();
+
+                // create unique file name
+                $expense_proof_name = 'expense_' . time() . '.' . $extension;
+
+                // move file
+                $file->move($upload_path, $expense_proof_name);
             }
             $paymentData = array(            
                 'payment_for' => 'debit',
@@ -214,7 +294,8 @@ class ExpenseController extends Controller
                 'chq_utr_no' => !empty($params['chq_utr_no'])?$params['chq_utr_no']:NULL,
                 'narration' => !empty($params['narration'])?$params['narration']:NULL,
                 'created_by' => $admin_id,
-                'created_from' => 'app'
+                'created_from' => 'app',
+                'expense_proof' =>  $expense_proof_name,
             ); 
 
             if($params['user_type'] == 'miscellaneous'){
@@ -288,7 +369,7 @@ class ExpenseController extends Controller
                 'created_at'=>date('Y-m-d H:i:s')
             ]);
 
-            return response()->json(['error' => false, 'message' => "Depot expense added successfully", 'data' => array() ], 200);
+            return response()->json(['error' => false, 'message' => "Depot expense added successfully", 'data' => $paymentData ], 200);
             
         } else {
             return response()->json(['status' => 400, 'message' => $validator->errors()->first()],400);

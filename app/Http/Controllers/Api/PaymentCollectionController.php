@@ -334,7 +334,7 @@ class PaymentCollectionController extends Controller
             }
 
             /* ================= JOURNAL ENTRY ================= */
-
+            
             Journal::insert([
                 'transaction_amount'  => $request->amount,
                 'is_credit'           => $is_credit,

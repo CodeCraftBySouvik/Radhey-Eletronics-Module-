@@ -1,10 +1,42 @@
 @extends('admin.layouts.app')
 
-@section('page', 'Employee Attendance Report')
+{{-- @section('page', 'Employee Attendance Report') --}}
 
 @section('content')
 <div class="container">
     <h2 class="mb-3">Attendance Report - {{ \Carbon\Carbon::create($year, $month, 1)->format('F Y') }}</h2>
+
+        <form method="GET" action="{{ route('admin.hr.attendance-report') }}" class="row g-2 mb-3">
+        <div class="col-md-4">
+            <input
+                type="month"
+                name="month_year"
+                class="form-control"
+                value="{{ sprintf('%04d-%02d', $year, $month) }}"
+            >
+        </div>
+
+
+        <div class="col-md-4">
+            <select name="user_id" class="form-control">
+                <option value="">All Employees</option>
+                @foreach($users as $u)
+                    <option value="{{ $u->id }}" {{ request('user_id') == $u->id ? 'selected' : '' }}>
+                        {{ $u->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
+        <div class="col-md-2">
+           <div class="d-flex justify-content-start">
+            <button type="submit" class="btn btn-primary me-2">Filter</button>
+            <a href="{{ route('admin.hr.attendance-report') }}" class="btn btn-secondary">Reset</a>
+             
+           </div>
+        </div>
+
+    </form>
 
     {{-- Legend --}}
     <div class="mb-2">

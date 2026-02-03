@@ -22,7 +22,7 @@ use App\Models\Store;
 
 Route::post('login', 'Api\UserController@login')->withoutMiddleware('throttle:api');
 
-Route::middleware('auth:sanctum','throttle:api')->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
    Route::get('/user', function (Request $request) {
         return $request->user();
     });
@@ -72,7 +72,7 @@ Route::post('order/list', 'Api\OrderController@list');
 Route::post('payment-collection/add','Api\PaymentCollectionController@store');
 Route::post('payment-collection/list-by-store', 'Api\PaymentCollectionController@listByStore');
 // Expense
-Route::post('expenses/save','Api\PaymentCollectionController@saveExpenses');
+// Route::post('expenses/save','Api\PaymentCollectionController@saveExpenses');
 // scan
 Route::post('scan/box', 'Api\ScanController@box');
 Route::post('scan/stockout', 'Api\ScanController@stockout');

@@ -432,10 +432,14 @@ Route::prefix('admin')->name('admin.')->group(function() {
             Route::get('/view-final-stock/{entry_date}', 'Admin\StockAuditController@view_final_stock')->name('view-final-stock');
         });
 
+        // HR
+        Route::prefix('hr')->name('hr.')->group(function(){
+             Route::get('/attendance-report', 'Admin\HrController@attendance_report')->name('attendance-report');
+        });
         
         // report
         Route::prefix('report')->name('report.')->group(function(){
-            Route::get('/attendance-report', 'Admin\ReportController@attendance_report')->name('attendance-report');
+           
 
             Route::get('/cp-sp-report', 'Admin\ReportController@cp_sp_report')->name('cp-sp-report');
             Route::get('/cp-sp-csv', 'Admin\ReportController@cp_sp_csv')->name('cp-sp-csv');

@@ -258,14 +258,17 @@
                     {{-- ========== --}}
                     
                     
-                    
+                    <li class="@if(request()->is('admin/hr/*')) { {{'active'}} }  @endif">
+                        <a href="#"><i class="fi fi-br-cube"></i> <span>HR</span></a>
+                        <ul>  
+                            <li class="{{ ( request()->is('admin/hr/attendance-report') ) ? 'active' : '' }}"><a href="{{ route('admin.hr.attendance-report') }}">Attendance Report</a></li>
+                        </ul>
+                    </li>    
 
                     @if ($accessReport)
                     <li class="@if(request()->is('admin/report/*')  || request()->is('admin/attendance*') || request()->is('admin/revenue') ) { {{'active'}} }  @endif">
                         <a href="#"><i class="fi fi-br-cube"></i> <span>Report</span></a>
                         <ul>  
-
-                            <li class="{{ ( request()->is('admin/report/attendance-report') ) ? 'active' : '' }}"><a href="{{ route('admin.report.attendance-report') }}">Attendance Report</a></li>
                             <li class="{{ ( request()->is('admin/report/sales-report') ) ? 'active' : '' }}"><a href="{{ route('admin.report.sales-report') }}">Sales Report</a></li>
                             <li class="{{ ( request()->is('admin/report/sales-analysis') ) ? 'active' : '' }}"><a href="{{ route('admin.report.sales-analysis') }}">Sales Analysis</a></li>
                             <li class="{{ ( request()->is('admin/report/payment-receipt-report') ) ? 'active' : '' }}"><a href="{{ route('admin.report.payment-receipt-report') }}">Payment Collection Report</a></li>
