@@ -220,12 +220,11 @@ class UserRepository implements UserInterface
         DB::beginTransaction();
         try {
             $collectedData = collect($data);
-            
             $newEntry = new User;
             $newEntry->designation = $collectedData['designation'];
             $newEntry->name = $collectedData['name'];            
             $newEntry->email = $collectedData['email'];
-            $newEntry->password = Hash::make('password');
+            $newEntry->password = Hash::make($collectedData['password']);
             $newEntry->mobile = $collectedData['mobile'];
             $newEntry->whatsapp_no = $collectedData['whatsapp_no'];
             $newEntry->is_wa_same = $collectedData['is_wa_same'];

@@ -207,7 +207,7 @@ class UserController extends Controller
             'error' => false,
             'message' => 'Logged in successfully',
             'data' => $userData,
-            'token' => $user->createToken('mobile')->plainTextToken, // Optional
+            // 'token' => $user->createToken('mobile')->plainTextToken, // Optional
         ]);
 
     } catch (\Exception $e) {
@@ -543,7 +543,6 @@ class UserController extends Controller
         ]);
 
         $params = $request->except('_token');
-
         if(!$validator->fails()){
 
             $user_id = $params['user_id'];

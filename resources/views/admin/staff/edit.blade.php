@@ -13,7 +13,7 @@
         <div class="row">
             <div class="col-sm-9">
 
-                <div class="card card-pad shadow-sm">
+                <div class="card card-pad shadow-sm" style="padding: 17px;">
                     <div class="row">
                         <div class="col-sm-4">
                             <div class="form-group mb-3">

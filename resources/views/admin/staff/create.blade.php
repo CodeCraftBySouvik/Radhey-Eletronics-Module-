@@ -11,10 +11,10 @@
     <form id="myForm" method="post" action="{{ route('admin.staff.store') }}" enctype="multipart/form-data">@csrf
         <div class="row">
             <div class="col-sm-9">
-                <p>** Password is by default set as <strong>password</strong> </p>
-                <div class="card shadow-sm">
+                {{-- <p>** Password is by default set as <strong>password</strong> </p> --}}
+                <div class="card shadow-sm" style="padding: 17px;">
                     <div class="row">
-                        <div class="col-sm-4">
+                        <div class="col-sm-3">
                             <div class="form-group mb-3">
                                 <label for="">Designition <span class="text-danger">*</span></label>
                                 <select name="designation" id="" class="form-control">
@@ -35,11 +35,18 @@
                                 @error('name') <p class="small text-danger">{{ $message }}</p> @enderror
                             </div>
                         </div>
-                        <div class="col-sm-4">
+                        <div class="col-sm-3">
                             <div class="form-group mb-3">
-                                <label for="">Email</label>
-                                <input type="email" name="email" placeholder="Staff email" class="form-control" value="{{old('email')}}">
+                                <label for="">Email </label>
+                                <input type="email" name="email" autocomplete="off" placeholder="Staff email" class="form-control" value="{{old('email')}}">
                                 @error('email') <p class="small text-danger">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="form-group mb-3">
+                                <label for="">Password  <span class="text-danger">*</span></label>
+                                <input type="password" name="password" autocomplete="new-password" placeholder="Staff password" class="form-control" value="{{old('password')}}">
+                                @error('password') <p class="small text-danger">{{ $message }}</p> @enderror
                             </div>
                         </div>
                         

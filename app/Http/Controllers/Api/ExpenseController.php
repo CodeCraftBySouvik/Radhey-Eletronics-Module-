@@ -234,7 +234,8 @@ class ExpenseController extends Controller
 
     public function add_depot_expense(Request $request)
     {
-        $user = auth()->user();
+        // $user = auth()->user();
+         $user = User::find($request->user_id);
 
         // If logged-in user is staff
         if ($user->type == 2) { // 2 = staff

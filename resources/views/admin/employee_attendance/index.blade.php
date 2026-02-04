@@ -1,6 +1,5 @@
 @extends('admin.layouts.app')
 
-{{-- @section('page', 'Employee Attendance Report') --}}
 
 @section('content')
 <div class="container">

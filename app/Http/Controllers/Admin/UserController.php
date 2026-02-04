@@ -183,6 +183,7 @@ class UserController extends Controller
             "designation" => "required|integer|min:1",
             "name" => "required|string|max:200",
             "email" => "nullable|string|max:200|unique:users,email",
+            "password" => "required",
             "mobile" => "required|digits_between:8,11|unique:users,mobile",
             "whatsapp_no" => "required|max:10|unique:users,whatsapp_no",       
             "aadhar_no" => "required",

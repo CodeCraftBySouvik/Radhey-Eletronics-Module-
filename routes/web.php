@@ -217,7 +217,6 @@ Route::prefix('admin')->name('admin.')->group(function() {
         // staff
         Route::prefix('staff')->name('staff.')->group(function() {
             Route::get('/', 'Admin\UserController@staffList')->name('index');
-            // Route::view('/create', 'admin.staff.create')->name('create');
             Route::get('/create', 'Admin\UserController@createStaff')->name('create');
             Route::post('/store', 'Admin\UserController@storeStaff')->name('store');
             Route::get('/{id}/view', 'Admin\UserController@staffshow')->name('view');

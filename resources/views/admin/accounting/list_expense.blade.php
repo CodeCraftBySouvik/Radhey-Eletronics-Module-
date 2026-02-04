@@ -269,6 +269,15 @@
                                             <td><span>Narration: <strong>{{ ucwords($item->narration)}}</strong></span></td>    
 
                                         @endif
+                                        <td>
+                                            @if (!empty($item->expense_proof))
+                                                <a href="{{asset('uploads/expense-proof/'.$item->expense_proof)}}" target="_blank" class="btn btn-sm btn-outline-success">
+                                                    View Proof
+                                                </a>
+                                            @else
+                                                <span class="badge bg-secondary">No Proof</span>    
+                                            @endif
+                                        </td>
 
                                     </tr>
 
