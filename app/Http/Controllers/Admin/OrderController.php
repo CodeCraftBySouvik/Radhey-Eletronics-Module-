@@ -173,7 +173,7 @@ class OrderController extends Controller
             return  redirect()->back()->withErrors($thresholdErrMsg)->withInput();
         }
         $orderData = array(
-            'order_no' => "AGNI".mt_rand(),
+            'order_no' => "VZ".mt_rand(),
             'user_id' => $params['user_id'],
             'store_id' => $params['store_id'],
             'amount' => $params['amount'],
@@ -212,7 +212,7 @@ class OrderController extends Controller
         // dd($params);
 
         $orderData = array(
-            'order_no' => "AGNI".mt_rand(),
+            'order_no' => "VZ".mt_rand(),
             'user_id' => $params['user_id'],
             'store_id' => $params['store_id'],
             'created_from' => 'web',

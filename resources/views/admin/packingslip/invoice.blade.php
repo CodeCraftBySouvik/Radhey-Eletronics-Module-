@@ -11,7 +11,7 @@
 					<tr>
 						<td rowspan="2" style="font-size: 12px;">
 							<p style="margin: 0">Sender</p>
-							<p style="margin: 0;"><strong>AGNI</strong><br/>
+							<p style="margin: 0;"><strong>VOZEN</strong><br/>
 						</td>
 						<td style="font-size: 12px;">							
 							<p style="margin: 0;">Invoice No:<br/>
@@ -168,7 +168,7 @@
 							<p style="margin: 0;">1. All claims, if any, for shortages or damages must be reported to customer service on the day of delivery through the contact us page on the web store 2. All Disputes are subject to Maharashtra (27) jurisdiction only.</p>
 						</td>
 						<td align="center" style="width: 50%; border-top: 1px solid #000; border-left: 1px solid #000;">
-							<h3>AGNI International</h3>
+							<h3>VOZEN INNOVATION AND EXCELLENCE</h3>
 							<h3>Authorised Signatory</h3>
 						</td>
 					</tr>

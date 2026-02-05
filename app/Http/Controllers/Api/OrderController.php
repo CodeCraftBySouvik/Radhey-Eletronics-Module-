@@ -117,10 +117,19 @@ class OrderController extends Controller
                 $latitude = $params['order_lat'];
                 $longitude = $params['order_lng'];
                 updatelocationattendance($attendance_id,$latitude,$longitude,$params['store_id']);
-            }            
+            }         
+            $result = $this->orderRepository->placeOrder($params);
+
+           if (isset($result['error']) && $result['error'] === true) {
+                return response()->json([
+                    'error' => true,
+                    'message' => $result['message']
+                ], 400);
+            }   
+
             return response()->json(
                 [
-                    'data' => $this->orderRepository->placeOrder($params)
+                    'data' => $result
                 ],
                 Response::HTTP_CREATED
             );

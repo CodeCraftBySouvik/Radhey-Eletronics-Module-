@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>AGNI - SERVICE SLIP | {{ $service_slip->voucher_no }}</title>
+	<title>VOZEN - SERVICE SLIP | {{ $service_slip->voucher_no }}</title>
 </head>
 <body>
     <table id="packing_table" style="width: 100%; border-collapse: collapse;" border="1" cellpadding="0" cellspacing="0">

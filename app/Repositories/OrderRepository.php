@@ -17,6 +17,7 @@ use App\Models\PaymentCollection;
 use App\Models\Ledger;
 use App\Models\Store;
 use App\StoreVisit;
+use Illuminate\Support\Facades\Log;
 
 class OrderRepository implements OrderInterface
 {
@@ -226,13 +227,15 @@ class OrderRepository implements OrderInterface
 
 
     public function placeOrder(array $data){
+       
+
         $collectedData = collect($data);
 
         DB::beginTransaction();
 
         try {
             // 1 order
-            $order_no = "AGNI".mt_rand();
+            $order_no = "VZ".mt_rand();
             $newEntry = new Order;
             $newEntry->order_no = $order_no;
             $newEntry->user_id = $collectedData['user_id'];
@@ -257,7 +260,6 @@ class OrderRepository implements OrderInterface
 
             // get due info (same logic as store due report)
             $creditInfo = $this->getStoreCreditStatus($storeId);
-            dd($creditInfo['outstanding'] + $subtotal);
             // fetch store credit config
             $store = Store::find($storeId);
 
@@ -325,6 +327,7 @@ class OrderRepository implements OrderInterface
             return false;
         }
     }
+
     public function placeOrderUpdated(array $data){
         $collectedData = collect($data);
         

@@ -183,7 +183,7 @@ class ThresholdRequestController extends Controller
         
         /* By default customer_approval is 1 or approved */
         /* Generate new order and order products with received if customer_approval is 1 */
-        $order_no = "AGNI".mt_rand();
+        $order_no = "VZ".mt_rand();
 
         $order_id = Order::insertGetId([
             'order_no' => $order_no,
