@@ -96,5 +96,6 @@ Route::get('ledger-pdf', 'Api\LedgerController@pdf');
 
 // Invoice generate by this Api
 Route::post('deliver-now/{packingslip_id}', 'Api\InvoiceApiController@deliverNow');
+Route::get('cash-book', 'Api\CashbookController@cashBookApi');
 
 // });
