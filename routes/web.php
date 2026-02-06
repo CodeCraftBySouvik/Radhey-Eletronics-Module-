@@ -299,7 +299,6 @@ Route::prefix('admin')->name('admin.')->group(function() {
         // threshold
         Route::prefix('threshold')->name('threshold.')->group(function() {
             
-
             Route::get('/list', 'Admin\ThresholdRequestController@index')->name('list');            
             Route::get('/{id}/view', 'Admin\ThresholdRequestController@view')->name('view');
             Route::post('/set-value', 'Admin\ThresholdRequestController@set_value')->name('set-value');
@@ -341,10 +340,17 @@ Route::prefix('admin')->name('admin.')->group(function() {
             Route::post('/editopeningbalance','Admin\AccountingController@editopeningbalance')->name('editopeningbalance');
             Route::get('/add_partner_expense', 'Admin\AccountingController@add_partner_expense')->name('add_partner_expense');
             Route::post('/save_partner_expense', 'Admin\AccountingController@save_partner_expense')->name('save_partner_expense');
+           
+
             Route::get('/edit_payment_receipt/{voucher_no}/{ledger_url?}', 'Admin\AccountingController@edit_payment_receipt')->name('edit_payment_receipt');
             Route::post('/update_payment_receipt', 'Admin\AccountingController@update_payment_receipt')->name('update_payment_receipt');
             
             Route::get('/list_expenses', 'Admin\AccountingController@list_expenses')->name('list_expenses');
+             // Expense Approve By Admin
+            Route::get('/approve_expenses/{payment_id}','Admin\AccountingController@get_expense_details')->name('expense.details');
+            Route::post('/approve_expense','Admin\AccountingController@approve_expense')->name('expense.approve');
+
+
             Route::get('/csv_export_expenses', 'Admin\AccountingController@csv_export_expenses')->name('csv_export_expenses');
             Route::get('/edit_expense/{id}', 'Admin\AccountingController@edit_expense')->name('edit_expense');
             Route::post('/update_expense', 'Admin\AccountingController@update_expense')->name('update_expense');

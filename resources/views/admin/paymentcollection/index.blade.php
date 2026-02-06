@@ -122,6 +122,7 @@ $staff_id = (isset($_GET['staff_id']) && $_GET['staff_id']!='')?$_GET['staff_id'
                         <td>
                             @if (empty($item->is_ledger_added))
                                 <a href="{{ route('admin.accounting.add_payment_receipt',$item->id) }}" class="btn btn-md btn-warning select-md">Approve</a>
+                                
                                 <a href="{{ route('admin.paymentcollection.remove',$item->id) }}" onclick="return confirm('Are you sure want to remove?');" class="btn btn-outline-danger select-md">Remove</a>
                             @endif
                             

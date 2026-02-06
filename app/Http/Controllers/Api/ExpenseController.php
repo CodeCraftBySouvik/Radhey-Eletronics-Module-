@@ -14,6 +14,7 @@ use Illuminate\Contracts\Encryption\DecryptException;
 use App\Models\Payment;
 use App\Models\Ledger;
 use App\Models\Journal;
+use App\User;
 
 class ExpenseController extends Controller
 {
@@ -294,6 +295,8 @@ class ExpenseController extends Controller
                 'bank_name' => !empty($params['bank_name'])?$params['bank_name']:NULL,
                 'chq_utr_no' => !empty($params['chq_utr_no'])?$params['chq_utr_no']:NULL,
                 'narration' => !empty($params['narration'])?$params['narration']:NULL,
+                'is_ledger_added' => 0,
+                'is_approved' => 0,
                 'created_by' => $admin_id,
                 'created_from' => 'app',
                 'expense_proof' =>  $expense_proof_name,
@@ -321,54 +324,55 @@ class ExpenseController extends Controller
 
             // dd($paymentData);
             $payment_id = Payment::insertGetId($paymentData);
-            $is_credit = 0; 
-            $is_debit = 1;
-            /* Add expense in purpose */            
-            $purpose_description = "expense for ".$params['user_type'].". ".$expense_name;
-            /* ====================== */
-            if($params['user_type'] != 'miscellaneous'){
-                $ledgerData = array(
-                    'user_type' => $params['user_type'],
-                    'transaction_id' => $params['voucher_no'],
-                    'transaction_amount' => $params['amount'],
-                    'payment_id' => $payment_id,
-                    'bank_cash' => ($params['payment_mode'] == 'cash') ? 'cash' : 'bank', 
-                    'is_credit' => $is_credit,
-                    'is_debit' => $is_debit,
-                    'entry_date' => $params['payment_date'],
-                    'purpose' => 'expense',
-                    'purpose_description' => $purpose_description,
-                    'created_at'=>date('Y-m-d H:i:s')
-                );
-                if($params['user_type'] == 'staff'){
-                    $ledgerStaff = array('staff_id' => $params['user_id']);
-                    $ledgerData = array_merge($ledgerData,$ledgerStaff);
-                } else if ($params['user_type'] == 'store'){
-                    $ledgerStore = array('store_id' => $params['user_id']);
-                    $ledgerData = array_merge($ledgerData,$ledgerStore);
-                } else if ($params['user_type'] == 'partner'){
-                    $ledgerAdmin = array('admin_id' => $params['user_id']);
-                    $ledgerData = array_merge($ledgerData,$ledgerAdmin);
-                } else if ($params['user_type'] == 'supplier'){
-                    $ledgerSupplier = array('supplier_id' => $params['user_id']);
-                    $ledgerData = array_merge($ledgerData,$ledgerSupplier);
-                }
-                // dd($ledgerData);            
-                Ledger::insert($ledgerData);
-            }        
-            /* Entry in journal */
-            Journal::insert([
-                'transaction_amount' => $params['amount'],
-                'is_credit' => $is_credit,
-                'is_debit' => $is_debit,
-                'entry_date' => $params['payment_date'],
-                'payment_id' => $payment_id,
-                'bank_cash' => ($params['payment_mode'] == 'cash') ? 'cash' : 'bank', 
-                'purpose' => 'expense',
-                'purpose_description' =>  $purpose_description ,
-                'purpose_id' => $params['voucher_no'],
-                'created_at'=>date('Y-m-d H:i:s')
-            ]);
+
+            // $is_credit = 0; 
+            // $is_debit = 1;
+            // /* Add expense in purpose */            
+            // $purpose_description = "expense for ".$params['user_type'].". ".$expense_name;
+            // /* ====================== */
+            // if($params['user_type'] != 'miscellaneous'){
+            //     $ledgerData = array(
+            //         'user_type' => $params['user_type'],
+            //         'transaction_id' => $params['voucher_no'],
+            //         'transaction_amount' => $params['amount'],
+            //         'payment_id' => $payment_id,
+            //         'bank_cash' => ($params['payment_mode'] == 'cash') ? 'cash' : 'bank', 
+            //         'is_credit' => $is_credit,
+            //         'is_debit' => $is_debit,
+            //         'entry_date' => $params['payment_date'],
+            //         'purpose' => 'expense',
+            //         'purpose_description' => $purpose_description,
+            //         'created_at'=>date('Y-m-d H:i:s')
+            //     );
+            //     if($params['user_type'] == 'staff'){
+            //         $ledgerStaff = array('staff_id' => $params['user_id']);
+            //         $ledgerData = array_merge($ledgerData,$ledgerStaff);
+            //     } else if ($params['user_type'] == 'store'){
+            //         $ledgerStore = array('store_id' => $params['user_id']);
+            //         $ledgerData = array_merge($ledgerData,$ledgerStore);
+            //     } else if ($params['user_type'] == 'partner'){
+            //         $ledgerAdmin = array('admin_id' => $params['user_id']);
+            //         $ledgerData = array_merge($ledgerData,$ledgerAdmin);
+            //     } else if ($params['user_type'] == 'supplier'){
+            //         $ledgerSupplier = array('supplier_id' => $params['user_id']);
+            //         $ledgerData = array_merge($ledgerData,$ledgerSupplier);
+            //     }
+            //     // dd($ledgerData);            
+            //     Ledger::insert($ledgerData);
+            // }        
+            // /* Entry in journal */
+            // Journal::insert([
+            //     'transaction_amount' => $params['amount'],
+            //     'is_credit' => $is_credit,
+            //     'is_debit' => $is_debit,
+            //     'entry_date' => $params['payment_date'],
+            //     'payment_id' => $payment_id,
+            //     'bank_cash' => ($params['payment_mode'] == 'cash') ? 'cash' : 'bank', 
+            //     'purpose' => 'expense',
+            //     'purpose_description' =>  $purpose_description ,
+            //     'purpose_id' => $params['voucher_no'],
+            //     'created_at'=>date('Y-m-d H:i:s')
+            // ]);
 
             return response()->json(['error' => false, 'message' => "Depot expense added successfully", 'data' => $paymentData ], 200);
             

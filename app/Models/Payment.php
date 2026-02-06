@@ -79,4 +79,14 @@ class Payment extends Model
     {
         return $this->belongsTo(\App\User::class, 'updated_by', 'id');
     }
+
+    public function getUserTypeAttribute()
+{
+    if ($this->staff_id) return 'Staff';
+    if ($this->store_id) return 'Store';
+    if ($this->supplier_id) return 'Supplier';
+    if ($this->admin_id) return 'Admin';
+    return 'Miscellaneous';
+}
+
 }

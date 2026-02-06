@@ -1773,6 +1773,8 @@ class AccountingController extends Controller
             'bank_cash' => ($request->payment_mode == 'cash') ? 'cash' : 'bank', 
             'amount' => $request->amount,
             'bank_name' => $request->bank_name,
+            'is_ledger_added' => 1,
+            'is_approved' => 1,
             'chq_utr_no' => $request->chq_utr_no,
             'narration' => $request->narration,
             'created_by' => Auth::user()->id
@@ -1918,6 +1920,8 @@ class AccountingController extends Controller
     }
 
     ## Add Depot Expense End ##
+
+
     ## Add Partner Expense Start ##
 
 
@@ -1951,24 +1955,9 @@ class AccountingController extends Controller
 
 
 
-
-
-
-    public function save_partner_expense(Request $request)
-
-
-
+     public function save_partner_expense(Request $request)
     {
-
-
-
-        
-
-
-
-        $request->validate([
-
-
+         $request->validate([
 
             'amount' => 'required',
 
@@ -2024,183 +2013,333 @@ class AccountingController extends Controller
 
         ]);
 
-
-
-        $params = $request->except('_token');
-
-
-
-        // dd($params);
-
-
-
-        $paymentData = array(
-
-
-
-            'admin_id' => $params['admin_id'],
-
-
-
-            'voucher_no' => $params['voucher_no'],
-
-
-
-            'expense_id' => $params['expense_id'],
-
-
-
-            'payment_for' => 'credit',
-
-
-
-            'payment_date' => $params['payment_date'],
-
-
-
-            'payment_mode' => $params['payment_mode'],
-
-
-
-            'payment_in' => ($params['payment_mode'] != 'cash') ? 'bank' : 'cash' ,
-
-
-
-            'bank_cash' => ($params['payment_mode'] == 'cash') ? 'cash' : 'bank', 
-
-
-
-            'amount' => $params['amount'],
-
-
-
-            'bank_name' => $params['bank_name'],
-
-
-
-            'chq_utr_no' => $params['chq_utr_no'],
-
-
-
-            'narration' => $params['narration'],
-
-
-
-            'created_by' => Auth::user()->id,
-
-
-
-            'created_at' => date('Y-m-d H:i:s'),
-
-
-
-            'updated_at' => date('Y-m-d H:i:s')
-
-
-
-        ); 
-
-
-
-        $payment_id = Payment::insertGetId($paymentData);
-
-
-
-        $expense_name = getSingleAttributeTable('expense',$params['expense_id'],'title');
-
-
-
-        $purpose_description = "expense for partner. ".$expense_name;
-
-
-
-        $ledgerData = array(
-
-
-
-            'user_type' => 'partner',
-
-
-
-            'admin_id' => $params['admin_id'],
-
-
-
-            'transaction_id' => $params['voucher_no'],
-
-
-
-            'transaction_amount' => $params['amount'],
-
-
-
-            'payment_id' => $payment_id,
-
-
-
-            'bank_cash' => ($params['payment_mode'] == 'cash') ? 'cash' : 'bank',
-
-
-
-            'is_credit' => 1,
-
-
-
-            'entry_date' => $params['payment_date'],
-
-
-
+        DB::beginTransaction();
+        try {
+
+            $createdFrom = $request->created_from ?? 'web'; // default admin
+
+            $paymentData = [
+                'admin_id' => $request->admin_id,
+                'voucher_no' => $request->voucher_no,
+                'expense_id' => $request->expense_id,
+                'payment_for' => 'debit',
+                'payment_date' => $request->payment_date,
+                'payment_mode' => $request->payment_mode,
+                'payment_in' => ($request->payment_mode != 'cash') ? 'bank' : 'cash',
+                'bank_cash' => ($request->payment_mode == 'cash') ? 'cash' : 'bank',
+                'amount' => $request->amount,
+                'bank_name' => $request->bank_name,
+                'chq_utr_no' => $request->chq_utr_no,
+                'narration' => $request->narration,
+                'created_from' => $createdFrom,
+                'is_ledger_added' => ($createdFrom == 'web') ? 1 : 0,
+                'is_approved' => ($createdFrom == 'web') ? 1 : 0,
+                'created_by' => Auth::id(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            $payment_id = Payment::insertGetId($paymentData);
+
+            /** 🔥 AUTO APPROVE ONLY IF ADMIN */
+            if ($createdFrom == 'web') {
+                $this->insertExpenseLedger($payment_id);
+            }
+
+            DB::commit();
+            return redirect()->route('admin.accounting.add_partner_expense')->with('message', 
+                $createdFrom == 'web'
+                ? 'Expense added successfully'
+                : 'Expense submitted for admin approval'
+            );
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors($e->getMessage());
+        }
+    }
+
+    ## Extract Ledger logic (REUSABLE & CLEAN)  ##
+    private function insertExpenseLedger($payment_id){
+        $payment = Payment::findOrFail($payment_id);
+
+         if ($payment->is_ledger_added == 1) {
+            return;
+        }
+
+        $expense_name = getSingleAttributeTable('expense', $payment->expense_id, 'title');
+         Ledger::insert([
+             'user_type' => 'partner',
+             'admin_id'  => $payment->admin_id,
+             'transaction_id' => $payment->voucher_no,
+             'transaction_amount' => $payment->amount,
+             'payment_id'  => $payment->id,
+             'bank_cash'  => ($payment->payment_mode == 'cash') ? 'cash' : 'bank',
+             'is_credit' => 1,
+             'entry_date' => $payment->payment_date,
+             'purpose' => $payment->partner_expense,
+               'purpose_description' => 'Partner Expense - '.$expense_name,
+            'created_at' => now(),
+            'updated_at' => now(),
+         ]);
+
+          Journal::insert([
+            'transaction_amount' => $payment->amount,
+            'is_debit' => 1,
+            'entry_date' => $payment->payment_date,
+            'payment_id' => $payment->id,
+            'bank_cash'  => ($payment->payment_mode == 'cash') ? 'cash' : 'bank',
             'purpose' => 'partner_expense',
+            'purpose_description' => $expense_name,
+            'purpose_id' => $payment->voucher_no,
+        ]);
 
-
-
-            'purpose_description' => $purpose_description,
-
-
-
-            'created_at' => date('Y-m-d H:i:s'),
-
-
-
-            'updated_at' => date('Y-m-d H:i:s')
-
-
-
-        );
-
-
-
-        Ledger::insert($ledgerData);
-
-
-
-        
-
-
-
-        $successMsg = "Partner Expense added successfully";
-
-
-
-        Session::flash('message', $successMsg); 
-
-
-
-        return redirect()->route('admin.accounting.add_partner_expense');
-
-
-
-        
-
-
+        Payment::where('id', $payment_id)->update([
+            'is_ledger_added' => 1,
+            'is_approve' => 1,
+            'updated_at' => now(),
+        ]);
 
     }
 
 
 
+    // public function save_partner_expense(Request $request)
+    // {
+    //     $request->validate([
+
+    //         'amount' => 'required',
+
+
+
+    //         'payment_date' => 'required',
+
+
+
+    //         'payment_mode' => 'required',
+
+
+
+    //         'chq_utr_no' => 'required_unless:payment_mode,cash',
+
+
+
+    //         'bank_name' => 'required_unless:payment_mode,cash',
+
+
+
+    //         'expense_id' => 'required'
+
+
+
+    //     ],[
+
+
+
+    //         'amount.required' => 'Please add amount',
+
+
+
+    //         'payment_date.required' => 'Please add date',
+
+
+
+    //         'payment_mode.required' => 'Please add mode of payment',
+
+
+
+    //         'chq_utr_no.required_unless' => 'Please add Cheque No or UTR No',
+
+
+
+    //         'bank_name.required_unless' => 'Please add bank name',
+
+
+
+    //         'expense_id.required' => 'Please add expense'
+
+
+
+    //     ]);
+
+
+
+    //     $params = $request->except('_token');
+
+
+
+    //     // dd($params);
+
+
+
+    //     $paymentData = array(
+
+
+
+    //         'admin_id' => $params['admin_id'],
+
+
+
+    //         'voucher_no' => $params['voucher_no'],
+
+
+
+    //         'expense_id' => $params['expense_id'],
+
+
+
+    //         'payment_for' => 'credit',
+
+
+
+    //         'payment_date' => $params['payment_date'],
+
+
+
+    //         'payment_mode' => $params['payment_mode'],
+
+
+
+    //         'payment_in' => ($params['payment_mode'] != 'cash') ? 'bank' : 'cash' ,
+
+
+
+    //         'bank_cash' => ($params['payment_mode'] == 'cash') ? 'cash' : 'bank', 
+
+
+
+    //         'amount' => $params['amount'],
+
+
+
+    //         'bank_name' => $params['bank_name'],
+
+
+
+    //         'chq_utr_no' => $params['chq_utr_no'],
+
+
+
+    //         'narration' => $params['narration'],
+
+    //         'is_ledger_added' => ($createdFrom == 'web') ? 1 : 0,
+    //         'is_approve'      => ($createdFrom == 'web') ? 1 : 0,
+
+    //         'created_by' => Auth::user()->id,
+
+
+
+    //         'created_at' => date('Y-m-d H:i:s'),
+
+
+
+    //         'updated_at' => date('Y-m-d H:i:s')
+
+
+
+    //     ); 
+
+
+
+    //     $payment_id = Payment::insertGetId($paymentData);
+
+
+
+    //     $expense_name = getSingleAttributeTable('expense',$params['expense_id'],'title');
+
+
+
+    //     $purpose_description = "expense for partner. ".$expense_name;
+
+
+
+    //     $ledgerData = array(
+
+
+
+    //         'user_type' => 'partner',
+
+
+
+    //         'admin_id' => $params['admin_id'],
+
+
+
+    //         'transaction_id' => $params['voucher_no'],
+
+
+
+    //         'transaction_amount' => $params['amount'],
+
+
+
+    //         'payment_id' => $payment_id,
+
+
+
+    //         'bank_cash' => ($params['payment_mode'] == 'cash') ? 'cash' : 'bank',
+
+
+
+    //         'is_credit' => 1,
+
+
+
+    //         'entry_date' => $params['payment_date'],
+
+
+
+    //         'purpose' => 'partner_expense',
+
+
+
+    //         'purpose_description' => $purpose_description,
+
+
+
+    //         'created_at' => date('Y-m-d H:i:s'),
+
+
+
+    //         'updated_at' => date('Y-m-d H:i:s')
+
+
+
+    //     );
+
+
+
+    //     Ledger::insert($ledgerData);
+
+
+
+        
+
+
+
+    //     $successMsg = "Partner Expense added successfully";
+
+
+
+    //     Session::flash('message', $successMsg); 
+
+
+
+    //     return redirect()->route('admin.accounting.add_partner_expense');
+
+
+
+        
+
+
+
+    // }
+
+
+
     ## Add Partner Expense End ##
 
-
+    
 
 
 
@@ -2507,6 +2646,82 @@ class AccountingController extends Controller
 
 
     }
+
+    public function get_expense_details($payment_id){
+        $payment = Payment::with(
+            'staff',
+            'store',
+            'supplier',
+            'partner',
+            'expense',
+            'creator'
+        )->findOrFail($payment_id);
+
+        return view('admin.accounting.expense_details',compact('payment'));
+    }
+    
+
+    ## Approve Expense From Admin ##
+   public function approve_expense($id)
+{
+    DB::beginTransaction();
+    try {
+
+        $payment = Payment::findOrFail($id);
+        
+        if ($payment->is_ledger_added == 1) {
+            return back()->with('message', 'Expense already approved');
+        }
+
+        $expense_name = getSingleAttributeTable('expense', $payment->expense_id, 'title');
+        
+       $ledgerData = [
+            'user_type' => $payment->staff_id ? 'staff' : ($payment->store_id ? 'store' : ($payment->admin_id ? 'partner' : 'supplier')),
+            
+            'transaction_id' => $payment->voucher_no,
+            'transaction_amount' => $payment->amount,
+            'payment_id' => $payment->id,
+            'bank_cash' => $payment->bank_cash,
+            'is_debit' => 1,
+            'entry_date' => $payment->payment_date,
+            'purpose' => 'partner_expense',
+            'purpose_description' => 'Expense for partner - '.$expense_name,
+            'created_at' => now(),
+            'updated_at' => now()
+        ];
+
+            if ($payment->staff_id) $ledgerData['staff_id'] = $payment->staff_id;
+            if ($payment->store_id) $ledgerData['store_id'] = $payment->store_id;
+            if ($payment->admin_id) $ledgerData['admin_id'] = $payment->admin_id;
+            if ($payment->supplier_id) $ledgerData['supplier_id'] = $payment->supplier_id;
+
+         Ledger::insert($ledgerData);
+
+        Journal::insert([
+            'transaction_amount' => $payment->amount,
+            'is_debit' => 1,
+            'entry_date' => $payment->payment_date,
+            'payment_id' => $payment->id,
+            'bank_cash' => $payment->bank_cash,
+            'purpose' => 'partner_expense',
+            'purpose_description' => $expense_name,
+            'purpose_id' => $payment->voucher_no,
+        ]);
+
+        Payment::where('id', $id)->update([
+            'is_ledger_added' => 1,
+            'is_approved' => 1,
+            'updated_at' => now()
+        ]);
+
+        DB::commit();
+        return redirect()->route('admin')->with('message', 'Expense approved successfully');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('message', $e->getMessage());
+    }
+}
 
     public function csv_export_expenses(Request $request)
     {
