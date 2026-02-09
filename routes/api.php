@@ -20,7 +20,8 @@ use App\Models\Store;
 |
 */
 
-Route::post('login', 'Api\UserController@login');
+// Route::post('login', 'Api\UserController@login')->withoutMiddleware('throttle:api');
+ Route::post('login', 'Api\UserController@login');
 
 // Route::middleware('auth:sanctum')->group(function () {
    Route::get('/user', function (Request $request) {
@@ -94,7 +95,10 @@ Route::post('ledger-user', 'Api\LedgerController@list');
 Route::get('ledger-csv', 'Api\LedgerController@csv');
 Route::get('ledger-pdf', 'Api\LedgerController@pdf');
 
+Route::get('/pending-packing-slips', 'Api\InvoiceApiController@getPendingPackingSlips');
+
 // Invoice generate by this Api
-Route::post('deliver-now/{packingslip_id}', 'Api\InvoiceApiController@deliverNow');
+Route::post('deliver-now', 'Api\InvoiceApiController@deliverNow');
+Route::get('cash-book', 'Api\CashbookController@cashBookApi');
 
 // });

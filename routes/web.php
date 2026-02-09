@@ -348,7 +348,7 @@ Route::prefix('admin')->name('admin.')->group(function() {
             Route::get('/list_expenses', 'Admin\AccountingController@list_expenses')->name('list_expenses');
              // Expense Approve By Admin
             Route::get('/approve_expenses/{payment_id}','Admin\AccountingController@get_expense_details')->name('expense.details');
-            Route::post('/approve_expense','Admin\AccountingController@approve_expense')->name('expense.approve');
+            Route::post('/approve_expense/{id}','Admin\AccountingController@approve_expense')->name('expense.approve');
 
 
             Route::get('/csv_export_expenses', 'Admin\AccountingController@csv_export_expenses')->name('csv_export_expenses');

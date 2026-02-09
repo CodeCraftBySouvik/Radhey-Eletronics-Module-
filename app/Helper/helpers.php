@@ -15,6 +15,8 @@ use App\Models\StockLog;
 use App\Models\WhatsAppInvoice;
 use App\Models\PurchaseOrderProduct;
 use Carbon\Carbon;
+use Picqer\Barcode\BarcodeGeneratorHTML;
+use Picqer\Barcode\BarcodeGeneratorPNG;
 
 // $ip = $_SERVER['REMOTE_ADDR'];
 

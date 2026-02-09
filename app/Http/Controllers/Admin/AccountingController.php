@@ -2664,6 +2664,7 @@ class AccountingController extends Controller
     ## Approve Expense From Admin ##
    public function approve_expense($id)
 {
+
     DB::beginTransaction();
     try {
 
@@ -2715,7 +2716,7 @@ class AccountingController extends Controller
         ]);
 
         DB::commit();
-        return redirect()->route('admin')->with('message', 'Expense approved successfully');
+        return redirect()->route('admin.accounting.list_expenses',$id)->with('message', 'Expense approved successfully');
 
     } catch (\Exception $e) {
         DB::rollBack();

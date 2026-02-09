@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use App\User;
 
 class OrderController extends Controller
 {
@@ -117,7 +118,7 @@ class OrderController extends Controller
                 $latitude = $params['order_lat'];
                 $longitude = $params['order_lng'];
                 updatelocationattendance($attendance_id,$latitude,$longitude,$params['store_id']);
-            }         
+            }            
             $result = $this->orderRepository->placeOrder($params);
 
            if (isset($result['error']) && $result['error'] === true) {
@@ -125,8 +126,7 @@ class OrderController extends Controller
                     'error' => true,
                     'message' => $result['message']
                 ], 400);
-            }   
-
+            }  
             return response()->json(
                 [
                     'data' => $result
@@ -141,54 +141,152 @@ class OrderController extends Controller
     }
 
 
+    // public function list(Request $request)
+    // {
+    //   $from_date = !empty($request->from_date)?$request->from_date:date('Y-m-d', strtotime("-15 days"));
+    //     $to_date = !empty($request->to_date)?$request->to_date:date('Y-m-d');
+    //     $take = !empty($request->take)?$request->take:10;
+    //     $page = isset($request->page)?$request->page:0;
+    //     $skip = ($take*$page);
+
+    //   $order = Order::select('id','store_id','amount','order_no','created_at')->with('stores:id,store_name,bussiness_name')->with('orderProducts:id,order_id,product_id,product_name,qty,pcs,piece_price,price')->with('packingslip:id,order_id,is_disbursed')->where('status', '!=', 3)->whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date])->orderBy('id','desc')->skip($skip)->take($take)->get();
+
+    //     $count_order = Order::where('status', '!=', 3)->whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date])->count();
+    //     $total_amount = Order::where('status', '!=', 3)->whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date])->sum('amount');
+
+    //     $isPrev = 0;
+    //     $isNext = 0;
+
+    //     if($page == 0){
+    //         if($count_order > $take){
+    //             $isNext = 1;
+    //         }
+    //     } else {
+    //         if($page > 0){
+    //             $isPrev = 1;
+    //             $page = ($page + 1);
+    //             $skips = ($take * $page);
+    //             // echo $skips; die;
+    //             if($skips < $count_order){
+    //                 $isNext = 1;
+    //             } 
+    //         }
+    //     }
+
+
+    //     return response()->json([
+    //         'error' => false,
+    //         'resp' => "All Order List",
+    //         'data' => array(
+    //             'from_date' => $from_date,
+    //             'to_date' => $to_date,
+    //             'count_order' => $count_order,
+    //             'isPrev' => $isPrev,
+    //             'isNext' => $isNext,
+    //             'total_amount' => $total_amount,
+    //             'order' => $order
+    //         )
+    //     ]);
+
+    // }
+    
     public function list(Request $request)
-    {
-      $from_date = !empty($request->from_date)?$request->from_date:date('Y-m-d', strtotime("-15 days"));
-        $to_date = !empty($request->to_date)?$request->to_date:date('Y-m-d');
-        $take = !empty($request->take)?$request->take:10;
-        $page = isset($request->page)?$request->page:0;
-        $skip = ($take*$page);
-
-       $order = Order::select('id','store_id','amount','order_no','created_at')->with('stores:id,store_name,bussiness_name')->with('orderProducts:id,order_id,product_id,product_name,qty,pcs,piece_price,price')->with('packingslip:id,order_id,is_disbursed')->where('status', '!=', 3)->whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date])->orderBy('id','desc')->skip($skip)->take($take)->get();
-
-        $count_order = Order::where('status', '!=', 3)->whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date])->count();
-        $total_amount = Order::where('status', '!=', 3)->whereBetween(DB::raw('DATE(created_at)'), [$from_date,$to_date])->sum('amount');
-
-        $isPrev = 0;
-        $isNext = 0;
-
-        if($page == 0){
-            if($count_order > $take){
-                $isNext = 1;
-            }
-        } else {
-            if($page > 0){
-                $isPrev = 1;
-                $page = ($page + 1);
-                $skips = ($take * $page);
-                // echo $skips; die;
-                if($skips < $count_order){
-                    $isNext = 1;
-                } 
-            }
-        }
-
-
+{
+     if (empty($request->user_id)) {
         return response()->json([
-            'error' => false,
-            'resp' => "All Order List",
-            'data' => array(
-                'from_date' => $from_date,
-                'to_date' => $to_date,
-                'count_order' => $count_order,
-                'isPrev' => $isPrev,
-                'isNext' => $isNext,
-                'total_amount' => $total_amount,
-                'order' => $order
-            )
-        ]);
-
+            'error' => true,
+            'message' => 'user_id is required'
+        ], 400);
     }
+
+    $user = User::find($request->user_id);
+
+    if (!$user) {
+        return response()->json([
+            'error' => true,
+            'message' => 'User not found'
+        ], 404);
+    }
+    
+    // ---------- Filters ----------
+    $from_date = $request->from_date ?? date('Y-m-d', strtotime('-15 days'));
+    $to_date   = $request->to_date   ?? date('Y-m-d');
+    $take      = $request->take      ?? 10;
+    $page      = $request->page      ?? 0;
+    $skip      = $take * $page;
+
+    // ---------- Orders Query ----------
+    $orders = Order::select('id', 'store_id', 'amount', 'order_no', 'created_at')
+        ->with('stores:id,store_name,bussiness_name')
+        ->with('orderProducts:id,order_id,product_id,product_name,qty,pcs,piece_price,price')
+        ->with(['packingslip' => function ($q) {
+            $q->whereNull('invoice_id')   // ❗ invoice not created
+              ->where('is_disbursed', 1); // ❗ ready / pending delivery
+        }])
+        ->where('status', '!=', 3)
+         ->where('user_id', $user->id) 
+        ->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date])
+        ->orderBy('id', 'desc')
+        ->skip($skip)
+        ->take($take)
+        ->get();
+
+    // ---------- Counts ----------
+    $count_order = Order::where('status', '!=', 3)
+        ->where('user_id', $user->id) 
+        ->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date])
+        ->count();
+
+    $total_amount = Order::where('status', '!=', 3)
+        ->where('user_id', $user->id) 
+        ->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date])
+        ->sum('amount');
+
+    // ---------- Pagination Flags ----------
+    $isPrev = $page > 0 ? 1 : 0;
+    $isNext = ($skip + $take) < $count_order ? 1 : 0;
+
+    // ---------- Transform Response ----------
+    $orders = $orders->map(function ($order) {
+        return [
+            'id' => $order->id,
+            'store_id' => $order->store_id,
+            'amount' => $order->amount,
+            'order_no' => $order->order_no,
+            'created_at' => $order->created_at,
+
+            'store' => $order->stores,
+            'order_products' => $order->orderProducts,
+
+            //  Show ONLY when invoice_id NULL & is_disbursed = 1
+            'packingslip' => $order->packingslip ? [
+                'packingslip_id' => $order->packingslip->id,
+                'slipno'         => $order->packingslip->slipno,
+                'store_id'       => $order->packingslip->store_id,
+                'is_disbursed'   => $order->packingslip->is_disbursed,
+                'invoice_id'     => $order->packingslip->invoice_id,
+                'created_at'     => $order->packingslip->created_at,
+            ] : null,
+        ];
+    });
+
+    // ---------- Final Response ----------
+    return response()->json([
+        'error' => false,
+        'resp'  => 'All Order List',
+        'data'  => [
+            'user_id'      => $user->id,
+            'from_date'    => $from_date,
+            'to_date'      => $to_date,
+            'count_order'  => $count_order,
+            'isPrev'       => $isPrev,
+            'isNext'       => $isNext,
+            'total_amount' => $total_amount,
+            'order'        => $orders,
+        ]
+    ]);
+}
+
 
 
        

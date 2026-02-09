@@ -32,7 +32,7 @@ class InvoiceApiController extends Controller
         // 2️⃣ Get order items
         $orderItems = $packingSlip->order->orderProducts; // relation: order->items
         $net_price = 0;
-
+        
         // 3️⃣ Generate invoice number
         $invoice_no = genAutoIncreNoInv();
 
