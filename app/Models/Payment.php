@@ -80,6 +80,11 @@ class Payment extends Model
         return $this->belongsTo(\App\User::class, 'updated_by', 'id');
     }
 
+    public function approvedBy():BelongsTo
+    {
+         return $this->belongsTo(\App\User::class, 'approved_by', 'id');
+    }
+
     public function getUserTypeAttribute()
 {
     if ($this->staff_id) return 'Staff';

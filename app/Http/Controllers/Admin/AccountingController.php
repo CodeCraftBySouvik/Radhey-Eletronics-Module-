@@ -1777,7 +1777,8 @@ class AccountingController extends Controller
             'is_approved' => 1,
             'chq_utr_no' => $request->chq_utr_no,
             'narration' => $request->narration,
-            'created_by' => Auth::user()->id
+            'created_by' => Auth::user()->id,
+            'approved_by' => auth()->guard('web')->id()
         );        
 
         if($user_type == 'miscellaneous'){
@@ -2041,7 +2042,7 @@ class AccountingController extends Controller
 
             $payment_id = Payment::insertGetId($paymentData);
 
-            /** 🔥 AUTO APPROVE ONLY IF ADMIN */
+            /** ðŸ”¥ AUTO APPROVE ONLY IF ADMIN */
             if ($createdFrom == 'web') {
                 $this->insertExpenseLedger($payment_id);
             }
@@ -2664,7 +2665,6 @@ class AccountingController extends Controller
     ## Approve Expense From Admin ##
    public function approve_expense($id)
 {
-
     DB::beginTransaction();
     try {
 
@@ -2712,13 +2712,15 @@ class AccountingController extends Controller
         Payment::where('id', $id)->update([
             'is_ledger_added' => 1,
             'is_approved' => 1,
+            'approved_by' => auth()->guard('web')->id(),
             'updated_at' => now()
         ]);
 
         DB::commit();
-        return redirect()->route('admin.accounting.list_expenses',$id)->with('message', 'Expense approved successfully');
+         return redirect()->route('admin.accounting.list_expenses',$id)->with('message', 'Expense approved successfully');
 
     } catch (\Exception $e) {
+        dd($e->getMessage());
         DB::rollBack();
         return back()->with('message', $e->getMessage());
     }
@@ -3641,9 +3643,10 @@ class AccountingController extends Controller
                     'payment_id' => $payment_id,
 
 
-
+                    
                     'is_ledger_added' => 1,
 
+                    'is_approve'   => 1,
 
 
                     'vouchar_no' => $request->voucher_no,
@@ -6952,6 +6955,9 @@ class AccountingController extends Controller
             ->when($notSuperAdmin, function ($query) use ($user) {
                 $query->where('user_id', $user->id); // Staff's collections
             })
+             ->when($selectedStaffId, function ($query) use ($selectedStaffId) {
+                $query->where('user_id', $selectedStaffId);
+            })
             ->sum('collection_amount');
 
         // Opening Balance (Past Expenses)
@@ -6960,6 +6966,11 @@ class AccountingController extends Controller
             ->when($notSuperAdmin, function ($query) use ($user) {
                 $query->whereHas('payment', function ($q) use ($user) {
                     $q->whereNotNull('staff_id')->where('staff_id', $user->id); // Store's expenses
+                });
+            })
+            ->when($selectedStaffId, function ($query) use ($selectedStaffId) {
+                $query->whereHas('payment', function ($q) use ($selectedStaffId) {
+                    $q->where('staff_id', $selectedStaffId);
                 });
             })
             ->sum('transaction_amount');
@@ -6988,14 +6999,29 @@ class AccountingController extends Controller
             ->sum('collection_amount');
 		
 		// Total Expenses
-        $expenseQuery = Journal::where('is_debit', 1)
-            ->whereBetween('entry_date', [$startDate, $endDate])
-            ->when($notSuperAdmin, function ($query) use ($user) {
+        // $expenseQuery = Journal::where('is_debit', 1)
+        //     ->whereBetween('entry_date', [$startDate, $endDate])
+        //     ->when($notSuperAdmin, function ($query) use ($user) {
+        //         $query->whereHas('payment', function ($q) use ($user) {
+        //             $q->whereNotNull('staff_id')->where('staff_id', $user->id);
+        //         });
+        //     });
+           $expenseQuery = Journal::where('is_debit', 1)
+            ->whereBetween('entry_date', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay()
+            ])
+            ->when($selectedStaffId, function ($query) use ($selectedStaffId) {
+                $query->whereHas('payment', function ($q) use ($selectedStaffId) {
+                    $q->where('staff_id', $selectedStaffId);
+                });
+            })
+            ->when(!$selectedStaffId && $notSuperAdmin, function ($query) use ($user) {
                 $query->whereHas('payment', function ($q) use ($user) {
-                    $q->whereNotNull('staff_id')->where('staff_id', $user->id);
+                    $q->where('staff_id', $user->id);
                 });
             });
-           
+
         
         $totalExpenses = $expenseQuery->sum('transaction_amount');
 		
@@ -7004,7 +7030,7 @@ class AccountingController extends Controller
 		// Get payment collections for table
         $paymentCollections = $this->getCollectionQuery($user,$notSuperAdmin, $selectedStaffId, $startDate, $endDate)
             ->where('collection_amount', '>', 0)
-            ->with(['stores', 'users'])
+            ->with(['stores', 'users', 'payment'])
             ->orderByDesc('created_at')
             ->get();
 		
@@ -7036,7 +7062,7 @@ class AccountingController extends Controller
 			])
 			->whereNotNull('final_amount');
 		
-		// If not super admin → only own orders
+		// If not super admin â†’ only own orders
 		$orderSalesQuery->when($notSuperAdmin, function ($q) use ($user) {
 			$q->where('user_id', $user->id);
 		});
@@ -7049,30 +7075,58 @@ class AccountingController extends Controller
 		
 		$totalOrderSales = $orderSalesQuery->sum('final_amount');
 		
-		return 		view('admin.accounting.cash_book_module',compact('startDate','endDate','staffName','totalCollections','totalExpenses','totalWallet','totalcashCollections','totalneftCollections','totalchequeCollections','paymentCollections','paymentExpenses','totalOrderSales'));
+		return view('admin.accounting.cash_book_module',compact('startDate','endDate','staffName','totalCollections','totalExpenses','totalWallet','totalcashCollections','totalneftCollections','totalchequeCollections','paymentCollections','paymentExpenses','totalOrderSales'));
 	}
 
 
-		private function getCollectionQuery(
-		$user,
-		$notSuperAdmin,
-		$selectedStaffId,
-		$startDate,
-		$endDate
-	) {
-		return PaymentCollection::where('is_approve', 1)
-			->when($notSuperAdmin, function ($query) use ($user) {
-				$query->where('user_id', $user->id);
-			})
-			->when($selectedStaffId, function ($query) use ($selectedStaffId) {
-            $query->where('user_id', $selectedStaffId);
-        })
+// 		private function getCollectionQuery(
+// 		$user,
+// 		$notSuperAdmin,
+// 		$selectedStaffId,
+// 		$startDate,
+// 		$endDate
+// 	) {
+// 		return PaymentCollection::where('is_approve', 1)
+// 			->when($notSuperAdmin, function ($query) use ($user) {
+// 				$query->where('user_id', $user->id);
+// 			})
+// 			->when($selectedStaffId, function ($query) use ($selectedStaffId) {
+//             $query->where('user_id', $selectedStaffId);
+//         })
 			
-			->whereBetween('created_at', [
-				\Carbon\Carbon::parse($startDate)->startOfDay(),
-				\Carbon\Carbon::parse($endDate)->endOfDay()
-			]);
-	}
+// 			->whereBetween('created_at', [
+// 				\Carbon\Carbon::parse($startDate)->startOfDay(),
+// 				\Carbon\Carbon::parse($endDate)->endOfDay()
+// 			]);
+// 	}
+
+   private function getCollectionQuery(
+    $user,
+    $notSuperAdmin,
+    $selectedStaffId,
+    $startDate,
+    $endDate
+) {
+    return PaymentCollection::where('is_approve', 1)
+        ->where('is_ledger_added', 1) 
+        ->whereBetween('created_at', [
+            Carbon::parse($startDate)->startOfDay(),
+            Carbon::parse($endDate)->endOfDay()
+        ])
+        // If staff selected → ONLY that staff (check payment.staff_id)
+        ->when($selectedStaffId, function ($query) use ($selectedStaffId) {
+            $query->whereHas('payment', function ($q) use ($selectedStaffId) {
+                $q->where('staff_id', $selectedStaffId);
+            });
+        })
+        // If no staff selected AND not super admin → filter by logged in user (check payment.staff_id)
+        ->when(!$selectedStaffId && $notSuperAdmin, function ($query) use ($user) {
+            $query->whereHas('payment', function ($q) use ($user) {
+                $q->where('staff_id', $user->id);
+            });
+        });
+}
+
 	
 	public function day_cash_entry(){
 		$staffs = User::where(function ($q) {

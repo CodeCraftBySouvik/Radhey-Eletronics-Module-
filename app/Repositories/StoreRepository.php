@@ -157,7 +157,7 @@ class StoreRepository implements StoreInterface
         if(!empty($collection['visit_image'])){
             $upload_path_visit_image = "public/uploads/store/";
             $visit_image = $collection['visit_image'];           
-        
+            
             $visitimageName = time().".".$visit_image->getClientOriginalName();
             $visit_image->move($upload_path_visit_image, $visitimageName);
             $uploadedVisitImage = $visitimageName;

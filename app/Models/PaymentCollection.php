@@ -38,4 +38,10 @@ class PaymentCollection extends Model
     {
         return $this->belongsTo(\App\Models\Store::class, 'store_id', 'id');
     }
+
+     public function payment(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Payment::class, 'payment_id', 'id');
+    }
+    
 }

@@ -190,7 +190,7 @@ class OrderController extends Controller
 
     // }
     
-    public function list(Request $request)
+     public function list(Request $request)
 {
      if (empty($request->user_id)) {
         return response()->json([
@@ -216,12 +216,21 @@ class OrderController extends Controller
     $skip      = $take * $page;
 
     // ---------- Orders Query ----------
-    $orders = Order::select('id', 'store_id', 'amount', 'order_no', 'created_at')
+    $orders = Order::select('id', 'status','store_id', 'amount', 'order_no', 'created_at')
         ->with('stores:id,store_name,bussiness_name')
         ->with('orderProducts:id,order_id,product_id,product_name,qty,pcs,piece_price,price')
         ->with(['packingslip' => function ($q) {
-            $q->whereNull('invoice_id')   // ❗ invoice not created
-              ->where('is_disbursed', 1); // ❗ ready / pending delivery
+            // $q->whereNull('invoice_id')   // ❗ invoice not created
+              $q->where('is_disbursed', 1) // ❗ ready / pending delivery
+               ->select(
+                    'id',
+                    'order_id',
+                    'slipno',
+                    'store_id',
+                    'is_disbursed',
+                    'invoice_id',
+                    'created_at'
+                );
         }])
         ->where('status', '!=', 3)
          ->where('user_id', $user->id) 
@@ -248,13 +257,36 @@ class OrderController extends Controller
 
     // ---------- Transform Response ----------
     $orders = $orders->map(function ($order) {
+         $statusMap = [
+            1 => 'Received',
+            2 => 'Pending',
+            3 => 'Cancelled',
+            4 => 'Completed',
+            5 => 'In Progress'
+        ];
+         $orderStatus = null;
+        $packingType = null;
+    
+        if ($order->packingslip) {
+    
+            // 🟡 CASE 1: Invoice NOT generated (fetch FIRST logically)
+            if ($order->packingslip->invoice_id === null) {
+                $packingType = 'pending_invoice';
+            }
+    
+            // 🟢 CASE 2: Invoice generated → show status
+            if ($order->packingslip->invoice_id !== null) {
+                $packingType = 'invoice_generated';
+                $orderStatus = $statusMap[$order->status] ?? 'Unknown';
+            }
+        }
         return [
             'id' => $order->id,
             'store_id' => $order->store_id,
             'amount' => $order->amount,
             'order_no' => $order->order_no,
             'created_at' => $order->created_at,
-
+            'status' => $order->status,
             'store' => $order->stores,
             'order_products' => $order->orderProducts,
 
@@ -267,6 +299,9 @@ class OrderController extends Controller
                 'invoice_id'     => $order->packingslip->invoice_id,
                 'created_at'     => $order->packingslip->created_at,
             ] : null,
+           
+            // //Order Status For Mobile App
+             'order_status' => $orderStatus
         ];
     });
 

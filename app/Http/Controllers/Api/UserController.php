@@ -203,6 +203,24 @@ class UserController extends Controller
         $userData->attendance_id = $attendance_id ?? 0;
       }
 
+        $total_payment_collection = $total_commission_earned = 0;
+
+        if ($user->type == 2) {
+            $total_payment_collection = DB::table('payment_collections')
+                ->where('user_id', $user->id)
+                ->where('is_ledger_added', 1)
+                ->sum('collection_amount');
+
+            $total_commission_earned = DB::table('ledger')
+                ->where('user_type','staff')
+                ->where('staff_id', $user->id)
+                ->where('purpose','sales_order_payment_commission')
+                ->sum('transaction_amount');
+        }
+
+        $userData->total_payment_collection = $total_payment_collection;
+        $userData->total_commission_earned = $total_commission_earned;
+
        return response()->json([
             'error' => false,
             'message' => 'Logged in successfully',

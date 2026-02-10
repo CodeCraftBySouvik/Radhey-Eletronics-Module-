@@ -135,6 +135,8 @@
 
                         <th>Approval</th>
 
+                        <th>Approved By</th>
+
                         <th>Action</th>
 
                     </tr>
@@ -228,7 +230,10 @@
 
                             
 
-                        </td>    
+                        </td>  
+                         <td>
+                            <span class="badge bg-success">{{ucwords($item->created_from)}}</span>
+                        </td>  
                         <td>
                             @if (!empty($item->is_ledger_added))
                                 <span class="badge bg-success">Approved</span>                                
@@ -236,15 +241,25 @@
                                 <span class="badge bg-danger">Not Approved</span>  
                                 
                             @endif
+                        </td>  
+                        <td>
+                            @if (!empty($item->approvedBy))
+                                <span>{{ ucwords($item->approvedBy ? $item->approvedBy->name : "")}}</span>                                
+                            @else
+                                <span class="badge bg-secondary">N/A</span>  
+                                
+                            @endif
                         </td>
                         <td>
+                            
+                            
                            @if($item->created_from == 'app' && $item->is_ledger_added == 0)
                            
                                 <a href="{{ route('admin.accounting.expense.details', $item->id) }}" class="btn btn-warning btn-sm">
                                     Approve
                                 </a>
                            
-                        @endif
+                           @endif
 
                             <a href="{{ route('admin.accounting.edit_expense', $item->id) }}" class="btn btn-outline-success select-md">Edit</a>
 
